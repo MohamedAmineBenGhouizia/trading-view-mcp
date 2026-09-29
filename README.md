@@ -3,7 +3,7 @@
 [![MCP Protocol](https://img.shields.io/badge/MCP-Model_Context_Protocol-blue.svg)](https://modelcontextprotocol.io/)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-82%2F82%20passing-success.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-87%2F87%20passing-success.svg)](tests/)
 [![E2E Live](https://img.shields.io/badge/e2e-79%2F79%20passing-success.svg)](tests/e2e.test.js)
 [![Zero Sleeps](https://img.shields.io/badge/latency-zero_sleeps_reactive-purple.svg)](src/wait.js)
 
@@ -28,7 +28,8 @@ An enterprise-grade, concurrency-safe, observable Model Context Protocol (MCP) s
   - [Market & Study Data Retrieval](#market--study-data-retrieval-tools)
   - [Pine Script Development & Compilation](#pine-script-development--compilation-tools)
   - [Drawing & Visual Annotations](#drawing--visual-annotation-tools)
-  - [UI Automation & Window Management](#ui-automation--window-management-tools)
+  - [UI Automation & Event Simulation](#ui-automation--event-simulation-tools)
+  - [Multi-Pane & Tab Orchestration](#multi-pane--tab-orchestration-tools)
   - [Alerts & Watchlist Management](#alerts--watchlist-management-tools)
   - [Bar Replay & Simulation Engine](#bar-replay--simulation-engine-tools)
   - [Diagnostics, Health & Session Persistence](#diagnostics-health--session-persistence-tools)
@@ -56,7 +57,7 @@ Traditional browser automation for financial charts suffers from race conditions
 - **Direct Chart Object Binding**: Extracts exact mathematical OHLCV bars, indicator values, and custom Pine graphics directly from TradingView's in-memory data sources (`window.TradingViewApi`), bypassing DOM scraping.
 - **Autonomous Pine Script IDE Integration**: Programmatically reads, edits, hot-reloads, checks errors, and compiles Pine Script v5/v6 inside TradingView's Monaco editor.
 - **Native Market Structure Analysis**: Zero-dependency pure-math engine computes Swing Highs/Lows, Break of Structure (BOS), Change of Character (CHoCH), Order Blocks / Fair Value Zones, and Market Regimes natively in Node.js.
-- **Token-Optimized Context**: Returns compact summaries, deduplicated price levels, and incremental delta updates, cutting LLM context window consumption by up to 90%.
+- **Token-Optimized Context**: Returns compact statistical summaries (`summary: true`), deduplicated Pine price levels, and low-token incremental delta polling (`market_get_recent_changes`), minimizing payload sizes and preserving context window budget.
 
 ---
 
@@ -128,7 +129,7 @@ TradingView's internal charting framework cannot process concurrent asynchronous
 All legacy artificial timeouts (`setTimeout(500)`, `setTimeout(2500)`) have been eliminated.
 - Operations utilize reactive predicate polling (`waitForCondition`) with 50ms intervals.
 - The server yields control back to the agent the exact millisecond the chart acknowledges a symbol change, indicator attachment, or Monaco editor initialization.
-- Saves up to 20 seconds during multi-timeframe scans and chart switching.
+- Eliminates fixed artificial sleeps by waiting deterministically on DOM state predicates and generation updates with early exit upon resolution.
 
 ### 4. State Generation Tracking & Cache Invalidation
 To prevent race conditions where an agent reads bar data while a timeframe change is still resolving:
@@ -150,7 +151,7 @@ LLMs frequently hallucinate because live (unclosed) candles fluctuate after tool
 
 ## 🧰 Complete MCP Tool Catalog
 
-The server exposes 76 purpose-built MCP tools categorized across 9 functional domains.
+The server exposes 89 purpose-built MCP tools categorized across 10 functional domains.
 
 ### High-Level Market Intelligence Tools
 Designed specifically for AI agents to comprehend market structure and context in a single call.
@@ -225,30 +226,35 @@ Designed specifically for AI agents to comprehend market structure and context i
 | `draw_remove_one` | `shape_id` | Deletes a specific drawing by ID. |
 | `draw_clear` | _none_ | Clears all user drawings from chart. |
 
-### UI Automation & Window Management Tools
+### UI Automation & Event Simulation Tools
 
 | Tool Name | Key Parameters | Description |
 | :--- | :--- | :--- |
-| `ui_click` | `selector`, `aria_label`, `text` | Clicks a TradingView UI element matching selector or aria label. |
-| `ui_open_panel` | `panel` (`"pine-editor"`, `"strategy-tester"`, etc.) | Toggles bottom dock panel open or closed. |
+| `ui_click` | `by`, `value` | Clicks a TradingView UI element matching selector strategy (aria-label, data-name, text, class-contains). |
+| `ui_open_panel` | `panel`, `action` | Opens, closes, or toggles bottom dock panels (pine-editor, strategy-tester, watchlist, alerts, trading). |
 | `ui_fullscreen` | _none_ | Toggles chart full-screen view. |
-| `layout_list` | _none_ | Lists saved chart layouts in user profile. |
-| `layout_switch` | `name` | Switches active workspace to another saved layout. |
-| `ui_keyboard` | `key`, `modifiers` | Dispatches native keyboard event (e.g., shortcuts). |
-| `ui_type_text` | `text` | Types text characters directly via CDP Input domain. |
-| `ui_hover` | `selector`, `x`, `y` | Dispatches mouse move event to trigger tooltips. |
-| `ui_scroll` | `delta_x`, `delta_y` | Dispatches mouse wheel scroll events across chart canvas. |
-| `ui_mouse_click` | `x`, `y`, `button` | Clicks exact coordinate on viewport. |
-| `ui_find_element` | `query` | Locates UI element and returns bounding box coordinates. |
-| `ui_evaluate` | `expression` | Evaluates arbitrary JavaScript expression in page context. |
-| `pane_list` | _none_ | Lists split-view chart panes in multi-chart layouts. |
+| `layout_list` | _none_ | Lists saved chart layouts in user profile with layout names and IDs. |
+| `layout_switch` | `name` | Switches active workspace to another saved layout by name or ID. |
+| `ui_keyboard` | `key`, `modifiers` | Dispatches native keyboard event (e.g., shortcuts like Enter, Escape, Ctrl+Z). |
+| `ui_type_text` | `text` | Types text characters directly via CDP Input domain into currently focused element. |
+| `ui_hover` | `by`, `value` | Dispatches mouse move event to hover over element and trigger tooltips. |
+| `ui_scroll` | `direction`, `amount` | Dispatches mouse wheel scroll events across chart canvas or page. |
+| `ui_mouse_click` | `x`, `y`, `button`, `double_click` | Clicks exact pixel coordinates on window viewport. |
+| `ui_find_element` | `query`, `strategy` | Locates UI element and returns bounding box coordinates. |
+| `ui_evaluate` | `expression` | Evaluates arbitrary JavaScript expression in page context for low-level automation. |
+
+### Multi-Pane & Tab Orchestration Tools
+
+| Tool Name | Key Parameters | Description |
+| :--- | :--- | :--- |
+| `pane_list` | _none_ | Lists split-view chart panes in multi-chart layouts with symbols and active state. |
 | `pane_set_layout` | `layout` (e.g., `"2h"`, `"2v"`, `"4"`) | Configures multi-pane grid layout. |
-| `pane_focus` | `index` | Switches focus to a specific chart pane. |
-| `pane_set_symbol` | `pane_index`, `symbol` | Sets symbol on an unfocused pane. |
+| `pane_focus` | `index` | Switches active focus to a specific chart pane by index (0-based). |
+| `pane_set_symbol` | `index`, `symbol` | Sets symbol on a specific pane without changing focus. |
 | `tab_list` | _none_ | Lists all open TradingView Desktop window tabs. |
-| `tab_new` | `url` | Opens a new desktop tab. |
-| `tab_close` | `tab_id` | Closes a desktop tab. |
-| `tab_switch` | `tab_id` | Switches active window focus to target tab. |
+| `tab_new` | _none_ | Opens a new desktop tab. |
+| `tab_close` | _none_ | Closes the currently active desktop tab. |
+| `tab_switch` | `index` | Switches active window focus to target tab by index. |
 
 ### Alerts & Watchlist Management Tools
 

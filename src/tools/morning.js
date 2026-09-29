@@ -5,7 +5,7 @@ import * as core from "../core/morning.js";
 export function registerMorningTools(server) {
   server.tool(
     "morning_brief",
-    "Scan your watchlist, read all indicator values, and return structured data for a session brief. Reads rules.json for your bias criteria and watchlist. Claude applies the rules to generate your daily bias.",
+    "Scan user watchlist, read indicator values across symbols, and extract structured market data for a pre-market or daily briefing according to rules.json. WHEN TO USE: Call at the start of a trading day to synthesize cross-asset market bias and momentum. SIDE EFFECTS: None (Read-only). LIMITATIONS: Requires rules.json in workspace or specified via rules_path.",
     {
       rules_path: z
         .string()
@@ -25,7 +25,7 @@ export function registerMorningTools(server) {
 
   server.tool(
     "session_save",
-    "Save today's morning brief to ~/.tradingview-mcp/sessions/YYYY-MM-DD.json for future reference.",
+    "Save generated session brief markdown or analysis summary to local session archive (~/.tradingview-mcp/sessions/YYYY-MM-DD.json). WHEN TO USE: Call after completing a morning briefing or daily market analysis to archive observations for future reference. SIDE EFFECTS: EXTERNAL_SIDE_EFFECT (Writes session JSON file to local disk). LIMITATIONS: None.",
     {
       brief: z
         .string()
@@ -48,7 +48,7 @@ export function registerMorningTools(server) {
 
   server.tool(
     "session_get",
-    "Retrieve a saved session brief. Returns today's if available, otherwise yesterday's.",
+    "Retrieve archived session briefing from local session history. Returns today's brief if available, otherwise previous session. WHEN TO USE: Call when reviewing past daily biases or comparing today's price action against previous morning briefings. SIDE EFFECTS: None (Read-only filesystem read). LIMITATIONS: Requires previously saved session file.",
     {
       date: z
         .string()

@@ -23,11 +23,14 @@ console.log('Starting full TradingView MCP project verification...');
 // 1. Lint
 runStep('Lint', process.execPath, ['scripts/lint.js']);
 
-// 2. Build
+// 2. Check Documentation Consistency
+runStep('Check Docs', process.execPath, ['scripts/check_docs.js']);
+
+// 3. Build
 runStep('Build', process.execPath, ['scripts/build.js']);
 
-// 3. Unit Tests
-runStep('Unit Tests', process.execPath, [
+// 4. Unit & Workflow Tests
+runStep('Unit & Workflow Tests', process.execPath, [
   '--test',
   'tests/pine_analyze.test.js',
   'tests/cli.test.js',
@@ -42,9 +45,10 @@ runStep('Unit Tests', process.execPath, [
   'tests/error_contract.test.js',
   'tests/chaos_concurrency.test.js',
   'tests/stdio_safety.test.js',
+  'tests/agent_workflows.test.js',
 ]);
 
-// 4. Integration Tests
+// 5. Integration Tests
 runStep('Integration Tests', process.execPath, [
   '--test',
   'tests/integration.test.js',

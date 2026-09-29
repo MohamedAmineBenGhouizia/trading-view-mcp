@@ -1,0 +1,1924 @@
+{
+  "version": "2.1.0",
+  "generatedAt": "2026-09-29T08:59:29.725Z",
+  "toolCount": 89,
+  "categories": {
+    "market_intelligence": "Deterministic quantitative market structure, regimes, zones, and MTF alignment",
+    "chart_navigation": "Chart symbol, resolution, range, zoom, and multi-timeframe navigation",
+    "market_data": "Direct in-memory OHLCV bars, indicators, strategy metrics, DOM, and Pine primitives",
+    "pine_script": "Monaco editor manipulation, compilation, marker diagnostics, and static analysis",
+    "drawing": "Visual geometric drawing primitives, coordinates, styling, and annotations",
+    "ui_automation": "DOM interactions, dock panel toggles, layout switching, and input simulation",
+    "pane_tab_management": "Multi-chart split view grid layouts and desktop window tab orchestration",
+    "alerts_watchlist": "Cloud price alert triggers, deletion, and active watchlist management",
+    "replay_simulation": "Historical bar replay, forward step-through, and simulated execution",
+    "system_session_diagnostics": "Connection liveness, UI diagnostics, screenshots, briefs, and desktop launch"
+  },
+  "tools": [
+    {
+      "name": "alert_create",
+      "category": "alerts_watchlist",
+      "readWrite": "STATE_MUTATING",
+      "description": "Open the TradingView alert configuration dialog and create a server-side price alert. WHEN TO USE: Call when setting conditional triggers on price levels (crossing, greater_than, less_than). SIDE EFFECTS: STATE_MUTATING (Creates an active alert in user account). LIMITATIONS: Requires market symbol to be active.",
+      "purpose": "Open the TradingView alert configuration dialog and create a server-side price alert.",
+      "whenToUse": "Call when setting conditional triggers on price levels (crossing, greater_than, less_than)",
+      "sideEffects": "STATE_MUTATING (Creates an active alert in user account)",
+      "limitations": "Requires market symbol to be active",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "condition": {
+            "type": "object",
+            "description": "Alert condition (e.g., \"crossing\", \"greater_than\", \"less_than\")"
+          },
+          "price": {
+            "type": "object",
+            "description": "Price level for the alert"
+          },
+          "message": {
+            "type": "object",
+            "description": "Alert message"
+          }
+        },
+        "required": [
+          "condition",
+          "price"
+        ]
+      }
+    },
+    {
+      "name": "alert_delete",
+      "category": "alerts_watchlist",
+      "readWrite": "STATE_MUTATING",
+      "description": "Delete active alerts from TradingView alerts list. WHEN TO USE: Call when removing triggered, obsolete, or batch alerts. SIDE EFFECTS: STATE_MUTATING (Deletes alerts from user account). LIMITATIONS: Pass delete_all: true to clear all alerts.",
+      "purpose": "Delete active alerts from TradingView alerts list.",
+      "whenToUse": "Call when removing triggered, obsolete, or batch alerts",
+      "sideEffects": "STATE_MUTATING (Deletes alerts from user account)",
+      "limitations": "Pass delete_all: true to clear all alerts",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "delete_all": {
+            "type": "object",
+            "description": "Delete all alerts"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "alert_list",
+      "category": "alerts_watchlist",
+      "readWrite": "READ",
+      "description": "List all active and triggered alerts from the TradingView alerts panel. WHEN TO USE: Call to inspect currently active alert triggers or verify created alerts. SIDE EFFECTS: None (Read-only). LIMITATIONS: Reads alerts visible in alerts dock.",
+      "purpose": "List all active and triggered alerts from the TradingView alerts panel.",
+      "whenToUse": "Call to inspect currently active alert triggers or verify created alerts",
+      "sideEffects": "None (Read-only)",
+      "limitations": "Reads alerts visible in alerts dock",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "batch_run",
+      "category": "system_session_diagnostics",
+      "readWrite": "STATE_MUTATING",
+      "description": "Execute a sequential analytical action across an array of symbols and timeframes (actions: \"screenshot\", \"get_ohlcv\", \"get_strategy_results\"). WHEN TO USE: Call when running automated screening, batch chart captures, or cross-asset data collection. SIDE EFFECTS: STATE_MUTATING (Sequentially navigates chart symbols/timeframes; action may write screenshot files). LIMITATIONS: Runs sequentially with configurable inter-iteration delay.",
+      "purpose": "Execute a sequential analytical action across an array of symbols and timeframes (actions: \"screenshot\", \"get_ohlcv\", \"get_strategy_results\").",
+      "whenToUse": "Call when running automated screening, batch chart captures, or cross-asset data collection",
+      "sideEffects": "STATE_MUTATING (Sequentially navigates chart symbols/timeframes; action may write screenshot files)",
+      "limitations": "Runs sequentially with configurable inter-iteration delay",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "symbols": {
+            "type": "object",
+            "description": "Array of symbols to iterate (e.g., [\"BTCUSD\", \"ETHUSD\", \"AAPL\"])"
+          },
+          "timeframes": {
+            "type": "object",
+            "description": "Array of timeframes (e.g., [\"D\", \"60\", \"15\"])"
+          },
+          "action": {
+            "type": "object",
+            "description": "Action to run: screenshot, get_ohlcv, get_strategy_results"
+          },
+          "delay_ms": {
+            "type": "object",
+            "description": "Delay between iterations in ms (default 2000)"
+          },
+          "ohlcv_count": {
+            "type": "object",
+            "description": "Bar count for get_ohlcv action (default 100)"
+          }
+        },
+        "required": [
+          "symbols",
+          "action"
+        ]
+      }
+    },
+    {
+      "name": "capture_screenshot",
+      "category": "system_session_diagnostics",
+      "readWrite": "EXTERNAL_SIDE_EFFECT",
+      "description": "Capture lossless PNG screenshot of TradingView window and save locally to disk (regions: \"full\", \"chart\", \"strategy_tester\"). Returns local filesystem path to prevent token exhaustion from raw base64. WHEN TO USE: Call when visual verification of chart patterns, drawings, or UI layout is requested by the user. SIDE EFFECTS: EXTERNAL_SIDE_EFFECT (Writes PNG image file to local screenshots directory). LIMITATIONS: Requires TradingView window to be rendered on screen.",
+      "purpose": "Capture lossless PNG screenshot of TradingView window and save locally to disk (regions: \"full\", \"chart\", \"strategy_tester\"). Returns local filesystem path to prevent token exhaustion from raw base64.",
+      "whenToUse": "Call when visual verification of chart patterns, drawings, or UI layout is requested by the user",
+      "sideEffects": "EXTERNAL_SIDE_EFFECT (Writes PNG image file to local screenshots directory)",
+      "limitations": "Requires TradingView window to be rendered on screen",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "region": {
+            "type": "object",
+            "description": "Region to capture: full, chart, strategy_tester (default full)"
+          },
+          "filename": {
+            "type": "object",
+            "description": "Custom filename (without extension)"
+          },
+          "method": {
+            "type": "object",
+            "description": "Capture method: cdp (Page.captureScreenshot) or api (chartWidgetCollection.takeScreenshot) (default cdp)"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "chart_get_multi_timeframe",
+      "category": "chart_navigation",
+      "readWrite": "READ",
+      "description": "Perform atomic sequential multi-timeframe scan across multiple resolutions (e.g., D, 240, 60, 15, 5) without race conditions. WHEN TO USE: Call when needing raw OHLCV bars across several timeframes in a single coordinated operation. SIDE EFFECTS: None (Read-only - safely preserves original chart state). LIMITATIONS: Changes resolution sequentially, restoring original state upon completion.",
+      "purpose": "Perform atomic sequential multi-timeframe scan across multiple resolutions (e.g., D, 240, 60, 15, 5) without race conditions.",
+      "whenToUse": "Call when needing raw OHLCV bars across several timeframes in a single coordinated operation",
+      "sideEffects": "None (Read-only - safely preserves original chart state)",
+      "limitations": "Changes resolution sequentially, restoring original state upon completion",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "symbol": {
+            "type": "object",
+            "description": "Symbol to scan (defaults to current chart symbol)"
+          },
+          "timeframes": {
+            "type": "object",
+            "description": "Array of timeframes to scan (default: [\"D\", \"240\", \"60\", \"15\", \"5\"])"
+          },
+          "count": {
+            "type": "object",
+            "description": "Number of bars per timeframe (default 100)"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "chart_get_snapshot",
+      "category": "chart_navigation",
+      "readWrite": "READ",
+      "description": "Get authoritative atomic snapshot of chart state (symbol, resolution, lastBarTime, barCount, generation ID). WHEN TO USE: Call to verify state freshness or obtain atomic synchronization metadata without pulling full bar series. SIDE EFFECTS: None (Read-only). LIMITATIONS: Lightweight snapshot only.",
+      "purpose": "Get authoritative atomic snapshot of chart state (symbol, resolution, lastBarTime, barCount, generation ID).",
+      "whenToUse": "Call to verify state freshness or obtain atomic synchronization metadata without pulling full bar series",
+      "sideEffects": "None (Read-only)",
+      "limitations": "Lightweight snapshot only",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "chart_get_state",
+      "category": "chart_navigation",
+      "readWrite": "READ",
+      "description": "Get current chart state including active symbol, timeframe resolution, chart rendering type, and list of attached indicator study entities with their IDs. WHEN TO USE: Call to inspect the current chart configuration or retrieve indicator entity IDs prior to calling chart_manage_indicator or indicator_set_inputs. SIDE EFFECTS: None (Read-only). LIMITATIONS: Requires an active chart window.",
+      "purpose": "Get current chart state including active symbol, timeframe resolution, chart rendering type, and list of attached indicator study entities with their IDs.",
+      "whenToUse": "Call to inspect the current chart configuration or retrieve indicator entity IDs prior to calling chart_manage_indicator or indicator_set_inputs",
+      "sideEffects": "None (Read-only)",
+      "limitations": "Requires an active chart window",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "chart_get_state_diagnostics",
+      "category": "market_intelligence",
+      "readWrite": "READ",
+      "description": "Get authoritative diagnostic state of chart, generation ID, CDP connection status, and task queue depths. WHEN TO USE: Call whenever diagnosing connection liveness, queue backpressure, or verifying generation freshness. NO SIDE EFFECTS.",
+      "purpose": "Get authoritative diagnostic state of chart, generation ID, CDP connection status, and task queue depths.",
+      "whenToUse": "Call whenever diagnosing connection liveness, queue backpressure, or verifying generation freshness",
+      "sideEffects": "None (Read-only)",
+      "limitations": "Requires active TradingView Desktop session.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "chart_get_visible_range",
+      "category": "chart_navigation",
+      "readWrite": "READ",
+      "description": "Get visible date range (unix timestamps in seconds) and bar index boundaries currently displayed on the viewport. WHEN TO USE: Call before capturing screenshots or inspecting what portion of the historical timeline is in user view. SIDE EFFECTS: None (Read-only). LIMITATIONS: Depends on active screen width and zoom level.",
+      "purpose": "Get visible date range (unix timestamps in seconds) and bar index boundaries currently displayed on the viewport.",
+      "whenToUse": "Call before capturing screenshots or inspecting what portion of the historical timeline is in user view",
+      "sideEffects": "None (Read-only)",
+      "limitations": "Depends on active screen width and zoom level",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "chart_manage_indicator",
+      "category": "chart_navigation",
+      "readWrite": "STATE_MUTATING",
+      "description": "Add or remove a built-in or public indicator/study on the active chart. WHEN TO USE: Call to attach technical studies (e.g., \"Relative Strength Index\", \"Bollinger Bands\") or remove studies using their entity_id from chart_get_state. SIDE EFFECTS: STATE_MUTATING (Modifies chart study collection). LIMITATIONS: Must use full official TradingView indicator names (e.g., \"Relative Strength Index\", not \"RSI\").",
+      "purpose": "Add or remove a built-in or public indicator/study on the active chart.",
+      "whenToUse": "Call to attach technical studies (e.g., \"Relative Strength Index\", \"Bollinger Bands\") or remove studies using their entity_id from chart_get_state",
+      "sideEffects": "STATE_MUTATING (Modifies chart study collection)",
+      "limitations": "Must use full official TradingView indicator names (e.g., \"Relative Strength Index\", not \"RSI\")",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "object",
+            "description": "Action: add or remove"
+          },
+          "indicator": {
+            "type": "object",
+            "description": "Full indicator name: \"Relative Strength Index\", \"MACD\", \"Volume\", \"Moving Average\", \"Bollinger Bands\", \"Moving Average Exponential\". Short names like RSI/EMA do NOT work."
+          },
+          "entity_id": {
+            "type": "object",
+            "description": "Entity ID to remove (from chart_get_state). Required for remove."
+          },
+          "inputs": {
+            "type": "object",
+            "description": "JSON string of input overrides for the indicator (e.g., '{\"length\": 20}')"
+          }
+        },
+        "required": [
+          "action",
+          "indicator"
+        ]
+      }
+    },
+    {
+      "name": "chart_scroll_to_date",
+      "category": "chart_navigation",
+      "readWrite": "STATE_MUTATING",
+      "description": "Jump the chart viewport to center on a specific historical calendar date or timestamp. WHEN TO USE: Call to navigate directly to a past macroeconomic release, news event, or breakout bar. SIDE EFFECTS: STATE_MUTATING (Scrolls chart canvas). LIMITATIONS: Historical data for the specified date must be available.",
+      "purpose": "Jump the chart viewport to center on a specific historical calendar date or timestamp.",
+      "whenToUse": "Call to navigate directly to a past macroeconomic release, news event, or breakout bar",
+      "sideEffects": "STATE_MUTATING (Scrolls chart canvas)",
+      "limitations": "Historical data for the specified date must be available",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "object",
+            "description": "ISO date string (e.g., \"2024-01-15\") or unix timestamp as a string"
+          }
+        },
+        "required": [
+          "date"
+        ]
+      }
+    },
+    {
+      "name": "chart_set_symbol",
+      "category": "chart_navigation",
+      "readWrite": "STATE_MUTATING",
+      "description": "Change the active chart symbol and wait for market data feed confirmation. WHEN TO USE: Call to navigate the chart to a new financial instrument before performing analysis or running strategies. SIDE EFFECTS: STATE_MUTATING (Alters active chart ticker, increments state generation, invalidates generational cache). LIMITATIONS: Requires valid TradingView ticker format (e.g., \"BTCUSD\", \"AAPL\", \"ES1!\", \"NYMEX:CL1!\").",
+      "purpose": "Change the active chart symbol and wait for market data feed confirmation.",
+      "whenToUse": "Call to navigate the chart to a new financial instrument before performing analysis or running strategies",
+      "sideEffects": "STATE_MUTATING (Alters active chart ticker, increments state generation, invalidates generational cache)",
+      "limitations": "Requires valid TradingView ticker format (e.g., \"BTCUSD\", \"AAPL\", \"ES1!\", \"NYMEX:CL1!\")",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "symbol": {
+            "type": "object",
+            "description": "Symbol to set (e.g., BTCUSD, AAPL, ES1!, NYMEX:CL1!)"
+          }
+        },
+        "required": [
+          "symbol"
+        ]
+      }
+    },
+    {
+      "name": "chart_set_timeframe",
+      "category": "chart_navigation",
+      "readWrite": "STATE_MUTATING",
+      "description": "Change the chart timeframe/resolution and reactively wait for candle feed resolution. WHEN TO USE: Call when switching resolutions for multi-timeframe analysis (e.g., switching from 1D to 15m). SIDE EFFECTS: STATE_MUTATING (Alters chart resolution, increments state generation, invalidates generational cache). LIMITATIONS: Supported formats include standard minutes (\"1\", \"5\", \"15\", \"60\", \"240\") and calendar periods (\"D\", \"W\", \"M\").",
+      "purpose": "Change the chart timeframe/resolution and reactively wait for candle feed resolution.",
+      "whenToUse": "Call when switching resolutions for multi-timeframe analysis (e.g., switching from 1D to 15m)",
+      "sideEffects": "STATE_MUTATING (Alters chart resolution, increments state generation, invalidates generational cache)",
+      "limitations": "Supported formats include standard minutes (\"1\", \"5\", \"15\", \"60\", \"240\") and calendar periods (\"D\", \"W\", \"M\")",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "timeframe": {
+            "type": "object",
+            "description": "Timeframe (e.g., 1, 5, 15, 60, D, W, M)"
+          }
+        },
+        "required": [
+          "timeframe"
+        ]
+      }
+    },
+    {
+      "name": "chart_set_type",
+      "category": "chart_navigation",
+      "readWrite": "STATE_MUTATING",
+      "description": "Change chart candle rendering type (Bars, Candles, Line, Area, Renko, HeikinAshi, etc.). WHEN TO USE: Call when specific analysis requires alternate bar representations (e.g., Heikin Ashi for trend smoothing). SIDE EFFECTS: STATE_MUTATING (Modifies chart canvas display mode). LIMITATIONS: Accepts chart type name or numeric index.",
+      "purpose": "Change chart candle rendering type (Bars, Candles, Line, Area, Renko, HeikinAshi, etc.).",
+      "whenToUse": "Call when specific analysis requires alternate bar representations (e.g., Heikin Ashi for trend smoothing)",
+      "sideEffects": "STATE_MUTATING (Modifies chart canvas display mode)",
+      "limitations": "Accepts chart type name or numeric index",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "chart_type": {
+            "type": "object",
+            "description": "Chart type: Bars(0), Candles(1), Line(2), Area(3), Renko(4), Kagi(5), PointAndFigure(6), LineBreak(7), HeikinAshi(8), HollowCandles(9) — pass name or number"
+          }
+        },
+        "required": [
+          "chart_type"
+        ]
+      }
+    },
+    {
+      "name": "chart_set_visible_range",
+      "category": "chart_navigation",
+      "readWrite": "STATE_MUTATING",
+      "description": "Zoom and pan the chart canvas to display a specific date range between two unix timestamps. WHEN TO USE: Call when focusing chart context on a specific historical event or earnings release. SIDE EFFECTS: STATE_MUTATING (Alters chart viewport zoom/pan). LIMITATIONS: Timestamps must be unix seconds within historical data range.",
+      "purpose": "Zoom and pan the chart canvas to display a specific date range between two unix timestamps.",
+      "whenToUse": "Call when focusing chart context on a specific historical event or earnings release",
+      "sideEffects": "STATE_MUTATING (Alters chart viewport zoom/pan)",
+      "limitations": "Timestamps must be unix seconds within historical data range",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "object",
+            "description": "Start of range (unix timestamp in seconds)"
+          },
+          "to": {
+            "type": "object",
+            "description": "End of range (unix timestamp in seconds)"
+          }
+        },
+        "required": [
+          "from",
+          "to"
+        ]
+      }
+    },
+    {
+      "name": "data_get_equity",
+      "category": "market_data",
+      "readWrite": "READ",
+      "description": "Extract equity curve data points from Strategy Tester. WHEN TO USE: Call when analyzing equity drawdowns, run-ups, or plotting performance trajectory over backtest span. SIDE EFFECTS: None (Read-only). LIMITATIONS: Strategy Tester must be active on chart.",
+      "purpose": "Extract equity curve data points from Strategy Tester.",
+      "whenToUse": "Call when analyzing equity drawdowns, run-ups, or plotting performance trajectory over backtest span",
+      "sideEffects": "None (Read-only)",
+      "limitations": "Strategy Tester must be active on chart",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "data_get_indicator",
+      "category": "market_data",
+      "readWrite": "READ",
+      "description": "Get internal study parameters, input values, and configuration of a specific indicator entity by ID. WHEN TO USE: Call to inspect active parameters (e.g., RSI length or MA source) for an indicator found in chart_get_state. SIDE EFFECTS: None (Read-only). LIMITATIONS: Requires valid entity ID.",
+      "purpose": "Get internal study parameters, input values, and configuration of a specific indicator entity by ID.",
+      "whenToUse": "Call to inspect active parameters (e.g., RSI length or MA source) for an indicator found in chart_get_state",
+      "sideEffects": "None (Read-only)",
+      "limitations": "Requires valid entity ID",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "entity_id": {
+            "type": "object",
+            "description": "Study entity ID (from chart_get_state)"
+          }
+        },
+        "required": [
+          "entity_id"
+        ]
+      }
+    },
+    {
+      "name": "data_get_ohlcv",
+      "category": "market_data",
+      "readWrite": "READ",
+      "description": "Get historical OHLCV bar data from active chart. Supports compact statistical summary mode (summary: true) for context efficiency, and closed-only filtering (closedOnly: true) to avoid unconfirmed candle hallucinations. WHEN TO USE: Call when computing quantitative models or inspecting raw price action. Use summary: true when only high/low/close bounds are needed to conserve token context. SIDE EFFECTS: None (Read-only). LIMITATIONS: Maximum 500 bars per request.",
+      "purpose": "Get historical OHLCV bar data from active chart. Supports compact statistical summary mode (summary: true) for context efficiency, and closed-only filtering (closedOnly: true) to avoid unconfirmed candle hallucinations.",
+      "whenToUse": "Call when computing quantitative models or inspecting raw price action. Use summary: true when only high/low/close bounds are needed to conserve token context",
+      "sideEffects": "None (Read-only)",
+      "limitations": "Maximum 500 bars per request",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "object",
+            "description": "Number of bars to retrieve (max 500, default 100)"
+          },
+          "summary": {
+            "type": "object",
+            "description": "Return summary stats (high, low, open, close, avg volume, range) instead of all bars — much smaller output"
+          },
+          "closedOnly": {
+            "type": "object",
+            "description": "Exclude the active, currently-forming candle so only confirmed historical bars are returned"
+          },
+          "expectedSymbol": {
+            "type": "object",
+            "description": "Assert that the returned data matches this symbol, throwing an error if chart has not switched"
+          },
+          "expectedTf": {
+            "type": "object",
+            "description": "Assert that the returned data matches this timeframe, throwing an error if chart has not switched"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "data_get_pine_boxes",
+      "category": "market_data",
+      "readWrite": "READ",
+      "description": "Read bounding boxes and zones drawn by Pine Script indicators (box.new) as deduplicated {high, low} price ranges. WHEN TO USE: Call when an indicator plots order blocks, fair value gaps, or consolidation boxes via box.new. SIDE EFFECTS: None (Read-only). LIMITATIONS: Only reads box primitives generated by active studies.",
+      "purpose": "Read bounding boxes and zones drawn by Pine Script indicators (box.new) as deduplicated {high, low} price ranges.",
+      "whenToUse": "Call when an indicator plots order blocks, fair value gaps, or consolidation boxes via box.new",
+      "sideEffects": "None (Read-only)",
+      "limitations": "Only reads box primitives generated by active studies",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "study_filter": {
+            "type": "object",
+            "description": "Substring to match study name. Omit for all."
+          },
+          "verbose": {
+            "type": "object",
+            "description": "Return all boxes with IDs and coordinates (default false — returns unique price zones)"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "data_get_pine_labels",
+      "category": "market_data",
+      "readWrite": "READ",
+      "description": "Read text annotations and labels drawn by Pine Script indicators (label.new) paired with price coordinates. WHEN TO USE: Call when an indicator displays bias markers, order block tags, or targets via label.new. SIDE EFFECTS: None (Read-only). LIMITATIONS: Only reads labels currently existing in chart memory.",
+      "purpose": "Read text annotations and labels drawn by Pine Script indicators (label.new) paired with price coordinates.",
+      "whenToUse": "Call when an indicator displays bias markers, order block tags, or targets via label.new",
+      "sideEffects": "None (Read-only)",
+      "limitations": "Only reads labels currently existing in chart memory",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "study_filter": {
+            "type": "object",
+            "description": "Substring to match study name. Omit for all."
+          },
+          "max_labels": {
+            "type": "object",
+            "description": "Max labels per study (default 50). Set higher if you need all."
+          },
+          "verbose": {
+            "type": "object",
+            "description": "Return raw label data with IDs, colors, positions (default false — returns only text + price)"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "data_get_pine_lines",
+      "category": "market_data",
+      "readWrite": "READ",
+      "description": "Read horizontal price levels drawn programmatically by Pine Script indicators (line.new). Returns deduplicated, sorted price levels per study. WHEN TO USE: Call when an indicator draws support/resistance or session levels via line.new. Use study_filter to target specific scripts. SIDE EFFECTS: None (Read-only). LIMITATIONS: Only reads lines drawn by active Pine studies.",
+      "purpose": "Read horizontal price levels drawn programmatically by Pine Script indicators (line.new). Returns deduplicated, sorted price levels per study.",
+      "whenToUse": "Call when an indicator draws support/resistance or session levels via line.new. Use study_filter to target specific scripts",
+      "sideEffects": "None (Read-only)",
+      "limitations": "Only reads lines drawn by active Pine studies",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "study_filter": {
+            "type": "object",
+            "description": "Substring to match study name (e.g., \"Profiler\", \"NY Levels\"). Omit for all."
+          },
+          "verbose": {
+            "type": "object",
+            "description": "Return raw line data with IDs, coordinates, colors (default false — returns only unique price levels)"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "data_get_pine_tables",
+      "category": "market_data",
+      "readWrite": "READ",
+      "description": "Read table matrices drawn by Pine Script indicators (table.new) as structured rows of text. WHEN TO USE: Call when an indicator outputs dashboard summaries, session statistics, or multi-timeframe matrices in a table. SIDE EFFECTS: None (Read-only). LIMITATIONS: Requires study drawing table.new to be attached.",
+      "purpose": "Read table matrices drawn by Pine Script indicators (table.new) as structured rows of text.",
+      "whenToUse": "Call when an indicator outputs dashboard summaries, session statistics, or multi-timeframe matrices in a table",
+      "sideEffects": "None (Read-only)",
+      "limitations": "Requires study drawing table.new to be attached",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "study_filter": {
+            "type": "object",
+            "description": "Substring to match study name. Omit for all."
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "data_get_strategy_results",
+      "category": "market_data",
+      "readWrite": "READ",
+      "description": "Extract performance metrics from the TradingView Strategy Tester panel (Net Profit, Profit Factor, Win Rate, Max Drawdown, Total Trades, Sharpe Ratio). WHEN TO USE: Call after compiling a Pine Script strategy to evaluate quantitative backtest results. SIDE EFFECTS: None (Read-only). LIMITATIONS: Requires a strategy script to be actively running on the chart with Strategy Tester panel populated.",
+      "purpose": "Extract performance metrics from the TradingView Strategy Tester panel (Net Profit, Profit Factor, Win Rate, Max Drawdown, Total Trades, Sharpe Ratio).",
+      "whenToUse": "Call after compiling a Pine Script strategy to evaluate quantitative backtest results",
+      "sideEffects": "None (Read-only)",
+      "limitations": "Requires a strategy script to be actively running on the chart with Strategy Tester panel populated",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "data_get_study_values",
+      "category": "market_data",
+      "readWrite": "READ",
+      "description": "Extract real-time numerical values of all visible indicators from the chart Data Window (RSI, MACD, EMAs, custom plot() outputs). WHEN TO USE: Call when reading current indicator values directly from TradingView without recomputing in Node.js. SIDE EFFECTS: None (Read-only). LIMITATIONS: Indicators must be visible on chart.",
+      "purpose": "Extract real-time numerical values of all visible indicators from the chart Data Window (RSI, MACD, EMAs, custom plot() outputs).",
+      "whenToUse": "Call when reading current indicator values directly from TradingView without recomputing in Node.js",
+      "sideEffects": "None (Read-only)",
+      "limitations": "Indicators must be visible on chart",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "data_get_trades",
+      "category": "market_data",
+      "readWrite": "READ",
+      "description": "Extract individual trade execution log from Strategy Tester (entry/exit times, prices, contracts, P&L). WHEN TO USE: Call when conducting granular trade-by-trade review or streak analysis of a backtested Pine strategy. SIDE EFFECTS: None (Read-only). LIMITATIONS: Strategy Tester bottom panel must have trade list populated.",
+      "purpose": "Extract individual trade execution log from Strategy Tester (entry/exit times, prices, contracts, P&L).",
+      "whenToUse": "Call when conducting granular trade-by-trade review or streak analysis of a backtested Pine strategy",
+      "sideEffects": "None (Read-only)",
+      "limitations": "Strategy Tester bottom panel must have trade list populated",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "max_trades": {
+            "type": "object",
+            "description": "Maximum trades to return"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "depth_get",
+      "category": "market_data",
+      "readWrite": "READ",
+      "description": "Extract order book / Depth of Market (DOM) bid/ask levels from the DOM panel. WHEN TO USE: Call when analyzing order book liquidity or bid-ask imbalance. SIDE EFFECTS: None (Read-only). LIMITATIONS: Requires DOM panel to be open in TradingView.",
+      "purpose": "Extract order book / Depth of Market (DOM) bid/ask levels from the DOM panel.",
+      "whenToUse": "Call when analyzing order book liquidity or bid-ask imbalance",
+      "sideEffects": "None (Read-only)",
+      "limitations": "Requires DOM panel to be open in TradingView",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "draw_clear",
+      "category": "drawing",
+      "readWrite": "STATE_MUTATING",
+      "description": "Remove all user drawing shapes and annotations from the active chart canvas. WHEN TO USE: Call when resetting or cleaning the chart canvas before drawing a fresh analysis template. SIDE EFFECTS: STATE_MUTATING (Deletes all user drawings on canvas). LIMITATIONS: Irreversible removal of canvas drawings.",
+      "purpose": "Remove all user drawing shapes and annotations from the active chart canvas.",
+      "whenToUse": "Call when resetting or cleaning the chart canvas before drawing a fresh analysis template",
+      "sideEffects": "STATE_MUTATING (Deletes all user drawings on canvas)",
+      "limitations": "Irreversible removal of canvas drawings",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "draw_get_properties",
+      "category": "drawing",
+      "readWrite": "READ",
+      "description": "Get styling properties, line colors, line width, and coordinate points of an existing drawing shape by entity ID. WHEN TO USE: Call when inspecting or confirming coordinates of an annotated price level. SIDE EFFECTS: None (Read-only). LIMITATIONS: Requires entity ID from draw_list.",
+      "purpose": "Get styling properties, line colors, line width, and coordinate points of an existing drawing shape by entity ID.",
+      "whenToUse": "Call when inspecting or confirming coordinates of an annotated price level",
+      "sideEffects": "None (Read-only)",
+      "limitations": "Requires entity ID from draw_list",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "entity_id": {
+            "type": "object",
+            "description": "Entity ID of the drawing (from draw_list)"
+          }
+        },
+        "required": [
+          "entity_id"
+        ]
+      }
+    },
+    {
+      "name": "draw_list",
+      "category": "drawing",
+      "readWrite": "READ",
+      "description": "List all user drawing shapes and annotations currently active on the chart with entity IDs, types, and coordinates. WHEN TO USE: Call before modifying or deleting drawings to locate specific drawing IDs. SIDE EFFECTS: None (Read-only). LIMITATIONS: Only reports user drawings, not Pine script drawings.",
+      "purpose": "List all user drawing shapes and annotations currently active on the chart with entity IDs, types, and coordinates.",
+      "whenToUse": "Call before modifying or deleting drawings to locate specific drawing IDs",
+      "sideEffects": "None (Read-only)",
+      "limitations": "Only reports user drawings, not Pine script drawings",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "draw_remove_one",
+      "category": "drawing",
+      "readWrite": "STATE_MUTATING",
+      "description": "Delete a specific drawing shape from the chart canvas by its entity ID. WHEN TO USE: Call when removing an invalid or obsolete level while preserving other drawings. SIDE EFFECTS: STATE_MUTATING (Deletes targeted drawing shape). LIMITATIONS: Requires entity ID obtained from draw_list.",
+      "purpose": "Delete a specific drawing shape from the chart canvas by its entity ID.",
+      "whenToUse": "Call when removing an invalid or obsolete level while preserving other drawings",
+      "sideEffects": "STATE_MUTATING (Deletes targeted drawing shape)",
+      "limitations": "Requires entity ID obtained from draw_list",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "entity_id": {
+            "type": "object",
+            "description": "Entity ID of the drawing to remove (from draw_list)"
+          }
+        },
+        "required": [
+          "entity_id"
+        ]
+      }
+    },
+    {
+      "name": "draw_shape",
+      "category": "drawing",
+      "readWrite": "STATE_MUTATING",
+      "description": "Create and render a graphical drawing primitive on the chart (horizontal_line, vertical_line, trend_line, rectangle, text, ray). WHEN TO USE: Call when annotating key support/resistance levels, chart patterns, breakout zones, or trade entry/target targets visually. SIDE EFFECTS: STATE_MUTATING (Adds drawing primitive to chart canvas). LIMITATIONS: Requires point coordinates in unix timestamp and price values.",
+      "purpose": "Create and render a graphical drawing primitive on the chart (horizontal_line, vertical_line, trend_line, rectangle, text, ray).",
+      "whenToUse": "Call when annotating key support/resistance levels, chart patterns, breakout zones, or trade entry/target targets visually",
+      "sideEffects": "STATE_MUTATING (Adds drawing primitive to chart canvas)",
+      "limitations": "Requires point coordinates in unix timestamp and price values",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "shape": {
+            "type": "object",
+            "description": "Shape type: horizontal_line, vertical_line, trend_line, rectangle, text"
+          },
+          "point": {
+            "type": "object",
+            "description": "{ time: unix_timestamp, price: number }"
+          },
+          "point2": {
+            "type": "object",
+            "description": "Second point for two-point shapes (trend_line, rectangle)"
+          },
+          "overrides": {
+            "type": "object",
+            "description": "JSON string of style overrides (e.g., '{\"linecolor\": \"#ff0000\", \"linewidth\": 2}')"
+          },
+          "text": {
+            "type": "object",
+            "description": "Text content for text shapes"
+          }
+        },
+        "required": [
+          "shape",
+          "point"
+        ]
+      }
+    },
+    {
+      "name": "indicator_set_inputs",
+      "category": "system_session_diagnostics",
+      "readWrite": "STATE_MUTATING",
+      "description": "Programmatically override input values of an indicator entity (e.g., length, source, period, multiplier). WHEN TO USE: Call when fine-tuning parameters of an attached study without deleting and re-adding it. SIDE EFFECTS: STATE_MUTATING (Alters indicator configuration on chart). LIMITATIONS: Requires study entity ID and valid JSON inputs map.",
+      "purpose": "Programmatically override input values of an indicator entity (e.g., length, source, period, multiplier).",
+      "whenToUse": "Call when fine-tuning parameters of an attached study without deleting and re-adding it",
+      "sideEffects": "STATE_MUTATING (Alters indicator configuration on chart)",
+      "limitations": "Requires study entity ID and valid JSON inputs map",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "entity_id": {
+            "type": "object",
+            "description": "Entity ID of the study (from chart_get_state)"
+          },
+          "inputs": {
+            "type": "object",
+            "description": "JSON string of input overrides, e.g. '{\"length\": 50, \"source\": \"close\"}'. Keys are input IDs, values are the new values."
+          }
+        },
+        "required": [
+          "entity_id",
+          "inputs"
+        ]
+      }
+    },
+    {
+      "name": "indicator_toggle_visibility",
+      "category": "system_session_diagnostics",
+      "readWrite": "STATE_MUTATING",
+      "description": "Show or hide an indicator/study plot on the chart canvas. WHEN TO USE: Call when decluttering the chart view before visual analysis or screenshot capture. SIDE EFFECTS: STATE_MUTATING (Toggles indicator visibility). LIMITATIONS: Requires study entity ID from chart_get_state.",
+      "purpose": "Show or hide an indicator/study plot on the chart canvas.",
+      "whenToUse": "Call when decluttering the chart view before visual analysis or screenshot capture",
+      "sideEffects": "STATE_MUTATING (Toggles indicator visibility)",
+      "limitations": "Requires study entity ID from chart_get_state",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "entity_id": {
+            "type": "object",
+            "description": "Entity ID of the study (from chart_get_state)"
+          },
+          "visible": {
+            "type": "object",
+            "description": "true to show, false to hide"
+          }
+        },
+        "required": [
+          "entity_id"
+        ]
+      }
+    },
+    {
+      "name": "layout_list",
+      "category": "ui_automation",
+      "readWrite": "READ",
+      "description": "List all saved chart layouts in user profile with layout names and IDs. WHEN TO USE: Call before switching layouts to discover valid layout names. SIDE EFFECTS: None (Read-only). LIMITATIONS: Requires user profile to have saved layouts.",
+      "purpose": "List all saved chart layouts in user profile with layout names and IDs.",
+      "whenToUse": "Call before switching layouts to discover valid layout names",
+      "sideEffects": "None (Read-only)",
+      "limitations": "Requires user profile to have saved layouts",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "layout_switch",
+      "category": "ui_automation",
+      "readWrite": "STATE_MUTATING",
+      "description": "Switch active chart workspace to another saved layout by name or ID. WHEN TO USE: Call when transitioning between specialized analytical layouts (e.g. crypto vs macro). SIDE EFFECTS: STATE_MUTATING (Loads different layout, reloads charts and indicators). LIMITATIONS: Layout name or ID must exist in user account.",
+      "purpose": "Switch active chart workspace to another saved layout by name or ID.",
+      "whenToUse": "Call when transitioning between specialized analytical layouts (e.g. crypto vs macro)",
+      "sideEffects": "STATE_MUTATING (Loads different layout, reloads charts and indicators)",
+      "limitations": "Layout name or ID must exist in user account",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "object",
+            "description": "Name or ID of the layout to switch to"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "market_compare_timeframes",
+      "category": "market_intelligence",
+      "readWrite": "READ",
+      "description": "Compare market regime, trend direction, momentum (RSI), and volume consensus across multiple timeframes (e.g., 1D, 4H, 1H, 15m, 5m). WHEN TO USE: Call when performing multi-timeframe top-down analysis to identify timeframe alignment or conflicts. NO SIDE EFFECTS.",
+      "purpose": "Compare market regime, trend direction, momentum (RSI), and volume consensus across multiple timeframes (e.g., 1D, 4H, 1H, 15m, 5m).",
+      "whenToUse": "Call when performing multi-timeframe top-down analysis to identify timeframe alignment or conflicts",
+      "sideEffects": "None (Read-only)",
+      "limitations": "Requires active TradingView Desktop session.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "timeframes": {
+            "type": "object",
+            "description": "List of timeframes to evaluate"
+          },
+          "candleCount": {
+            "type": "object",
+            "description": "Granular base candles to retrieve for aggregation (default 300)"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "market_detect_structure",
+      "category": "market_intelligence",
+      "readWrite": "READ",
+      "description": "Detect deterministic market structure: Swing Highs/Lows, HH/HL/LH/LL classifications, Break of Structure (BOS), Change of Character (CHoCH), and Equilibrium/Range bounds. WHEN TO USE: Call when evaluating trend continuity or structural breakouts. NO SIDE EFFECTS.",
+      "purpose": "Detect deterministic market structure: Swing Highs/Lows, HH/HL/LH/LL classifications, Break of Structure (BOS), Change of Character (CHoCH), and Equilibrium/Range bounds.",
+      "whenToUse": "Call when evaluating trend continuity or structural breakouts",
+      "sideEffects": "None (Read-only)",
+      "limitations": "Requires active TradingView Desktop session.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "candleCount": {
+            "type": "object",
+            "description": "Number of bars to analyze (default 100)"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "market_detect_zones",
+      "category": "market_intelligence",
+      "readWrite": "READ",
+      "description": "Detect objective horizontal support & resistance zones and price consolidation clusters with touch counts and test recency. WHEN TO USE: Call when locating key price levels for take-profit, stop-loss, or reaction areas. NO SIDE EFFECTS.",
+      "purpose": "Detect objective horizontal support & resistance zones and price consolidation clusters with touch counts and test recency.",
+      "whenToUse": "Call when locating key price levels for take-profit, stop-loss, or reaction areas",
+      "sideEffects": "None (Read-only)",
+      "limitations": "Requires active TradingView Desktop session.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "candleCount": {
+            "type": "object",
+            "description": "Number of bars to analyze (default 100)"
+          },
+          "tolerancePct": {
+            "type": "object",
+            "description": "Price clustering tolerance (default 0.005 = 0.5%)"
+          },
+          "minTouches": {
+            "type": "object",
+            "description": "Minimum touches to qualify a zone (default 2)"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "market_get_context",
+      "category": "market_intelligence",
+      "readWrite": "READ",
+      "description": "Get comprehensive, multi-dimensional market context (trend, regime, key indicators, volume, market structure, and zones) in a single deterministic call. WHEN TO USE: Call when orienting yourself on a ticker/timeframe before planning actions or answering user analysis queries. LIMITATIONS: Requires price bars loaded on chart. NO SIDE EFFECTS.",
+      "purpose": "Get comprehensive, multi-dimensional market context (trend, regime, key indicators, volume, market structure, and zones) in a single deterministic call.",
+      "whenToUse": "Call when orienting yourself on a ticker/timeframe before planning actions or answering user analysis queries",
+      "sideEffects": "None (Read-only)",
+      "limitations": "Requires price bars loaded on chart. NO SIDE EFFECTS",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "candleCount": {
+            "type": "object",
+            "description": "Number of OHLCV bars to analyze (default 100, max 500)"
+          },
+          "includeZones": {
+            "type": "object",
+            "description": "Whether to calculate support and resistance zones"
+          },
+          "includeIndicators": {
+            "type": "object",
+            "description": "Whether to calculate RSI, MACD, EMA, ATR, Bollinger, ADX, VWAP, Stochastic"
+          },
+          "includeStructure": {
+            "type": "object",
+            "description": "Whether to calculate Swings, BOS, CHoCH, and range position"
+          },
+          "expectedSymbol": {
+            "type": "object",
+            "description": "Optional symbol to verify against chart state"
+          },
+          "expectedTf": {
+            "type": "object",
+            "description": "Optional timeframe to verify against chart state"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "market_get_recent_changes",
+      "category": "market_intelligence",
+      "readWrite": "READ",
+      "description": "Detect structural shifts, new swings, volume spikes, and divergences that occurred since a given timestamp or generation. WHEN TO USE: Call when periodically polling or checking what changed on the chart since your last analysis turn, saving LLM token bandwidth. NO SIDE EFFECTS.",
+      "purpose": "Detect structural shifts, new swings, volume spikes, and divergences that occurred since a given timestamp or generation.",
+      "whenToUse": "Call when periodically polling or checking what changed on the chart since your last analysis turn, saving LLM token bandwidth",
+      "sideEffects": "None (Read-only)",
+      "limitations": "Requires active TradingView Desktop session.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "sinceTimestamp": {
+            "type": "object",
+            "description": "Unix timestamp in seconds or milliseconds to filter changes from"
+          },
+          "sinceGeneration": {
+            "type": "object",
+            "description": "Chart generation ID from previous analysis"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "morning_brief",
+      "category": "system_session_diagnostics",
+      "readWrite": "READ",
+      "description": "Scan user watchlist, read indicator values across symbols, and extract structured market data for a pre-market or daily briefing according to rules.json. WHEN TO USE: Call at the start of a trading day to synthesize cross-asset market bias and momentum. SIDE EFFECTS: None (Read-only). LIMITATIONS: Requires rules.json in workspace or specified via rules_path.",
+      "purpose": "Scan user watchlist, read indicator values across symbols, and extract structured market data for a pre-market or daily briefing according to rules.json.",
+      "whenToUse": "Call at the start of a trading day to synthesize cross-asset market bias and momentum",
+      "sideEffects": "None (Read-only)",
+      "limitations": "Requires rules.json in workspace or specified via rules_path",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "rules_path": {
+            "type": "object",
+            "description": "Optional path to rules.json. Defaults to rules.json in the project root."
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "pane_focus",
+      "category": "pane_tab_management",
+      "readWrite": "STATE_MUTATING",
+      "description": "Switch active user focus to a specific chart pane by index (0-based). WHEN TO USE: Call before executing chart operations targeted at a secondary pane in a multi-chart layout. SIDE EFFECTS: STATE_MUTATING (Changes active chart focus). LIMITATIONS: Index must be valid within pane_list.",
+      "purpose": "Switch active user focus to a specific chart pane by index (0-based).",
+      "whenToUse": "Call before executing chart operations targeted at a secondary pane in a multi-chart layout",
+      "sideEffects": "STATE_MUTATING (Changes active chart focus)",
+      "limitations": "Index must be valid within pane_list",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "index": {
+            "type": "object",
+            "description": "Pane index (0-based, from pane_list)"
+          }
+        },
+        "required": [
+          "index"
+        ]
+      }
+    },
+    {
+      "name": "pane_list",
+      "category": "pane_tab_management",
+      "readWrite": "READ",
+      "description": "List all chart panes in the current split-view workspace with their active symbols, resolutions, and focus state. WHEN TO USE: Call before manipulating multi-chart layouts to discover pane indices. SIDE EFFECTS: None (Read-only). LIMITATIONS: Requires multi-chart layout active to list multiple panes.",
+      "purpose": "List all chart panes in the current split-view workspace with their active symbols, resolutions, and focus state.",
+      "whenToUse": "Call before manipulating multi-chart layouts to discover pane indices",
+      "sideEffects": "None (Read-only)",
+      "limitations": "Requires multi-chart layout active to list multiple panes",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "pane_set_layout",
+      "category": "pane_tab_management",
+      "readWrite": "STATE_MUTATING",
+      "description": "Change the chart grid layout grid (e.g., single \"s\", \"2h\", \"2v\", \"4\" quad grid). WHEN TO USE: Call when configuring multi-chart views for correlated assets or multi-timeframe monitoring. SIDE EFFECTS: STATE_MUTATING (Alters window grid division and creates/destroys chart panes). LIMITATIONS: Layout codes: s, 2h, 2v, 2-1, 1-2, 3h, 3v, 4, 6, 8.",
+      "purpose": "Change the chart grid layout grid (e.g., single \"s\", \"2h\", \"2v\", \"4\" quad grid).",
+      "whenToUse": "Call when configuring multi-chart views for correlated assets or multi-timeframe monitoring",
+      "sideEffects": "STATE_MUTATING (Alters window grid division and creates/destroys chart panes)",
+      "limitations": "Layout codes: s, 2h, 2v, 2-1, 1-2, 3h, 3v, 4, 6, 8",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "layout": {
+            "type": "object",
+            "description": "Layout code: s (single), 2h, 2v, 2-1, 1-2, 3h, 3v, 4 (2x2), 6, 8. Also accepts: single, 2x1, 1x2, 2x2, quad"
+          }
+        },
+        "required": [
+          "layout"
+        ]
+      }
+    },
+    {
+      "name": "pane_set_symbol",
+      "category": "pane_tab_management",
+      "readWrite": "STATE_MUTATING",
+      "description": "Set financial ticker symbol directly on a specific pane index without changing active focus. WHEN TO USE: Call when populating multi-pane grids with correlated tickers (e.g. BTCUSD on pane 0, ETHUSD on pane 1). SIDE EFFECTS: STATE_MUTATING (Changes symbol on target pane). LIMITATIONS: Target pane index must exist.",
+      "purpose": "Set financial ticker symbol directly on a specific pane index without changing active focus.",
+      "whenToUse": "Call when populating multi-pane grids with correlated tickers (e.g. BTCUSD on pane 0, ETHUSD on pane 1)",
+      "sideEffects": "STATE_MUTATING (Changes symbol on target pane)",
+      "limitations": "Target pane index must exist",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "index": {
+            "type": "object",
+            "description": "Pane index (0-based)"
+          },
+          "symbol": {
+            "type": "object",
+            "description": "Symbol to set (e.g., NQ1!, ES1!, AAPL)"
+          }
+        },
+        "required": [
+          "index",
+          "symbol"
+        ]
+      }
+    },
+    {
+      "name": "pine_analyze",
+      "category": "pine_script",
+      "readWrite": "READ",
+      "description": "Run offline static analysis on Pine Script source code: detects array out-of-bounds, unguarded array.get/first/last, invalid loop ranges, lookahead bias, and deprecated syntax. WHEN TO USE: Call before compiling code to verify correctness without needing a live TradingView connection. SIDE EFFECTS: None (Read-only offline parser). LIMITATIONS: Static AST parsing only; does not execute runtime logic.",
+      "purpose": "Run offline static analysis on Pine Script source code: detects array out-of-bounds, unguarded array.get/first/last, invalid loop ranges, lookahead bias, and deprecated syntax.",
+      "whenToUse": "Call before compiling code to verify correctness without needing a live TradingView connection",
+      "sideEffects": "None (Read-only offline parser)",
+      "limitations": "Static AST parsing only; does not execute runtime logic",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "object",
+            "description": "Pine Script source code to analyze"
+          }
+        },
+        "required": [
+          "source"
+        ]
+      }
+    },
+    {
+      "name": "pine_check",
+      "category": "pine_script",
+      "readWrite": "EXTERNAL_SIDE_EFFECT",
+      "description": "Compile Pine Script via TradingView remote compiler API without touching the UI. Returns compilation errors and warnings. WHEN TO USE: Call for headless validation of Pine Script code before opening editor or chart. SIDE EFFECTS: EXTERNAL_SIDE_EFFECT (Sends code to TradingView cloud compiler endpoint). LIMITATIONS: Requires active internet connection to reach TradingView servers.",
+      "purpose": "Compile Pine Script via TradingView remote compiler API without touching the UI. Returns compilation errors and warnings.",
+      "whenToUse": "Call for headless validation of Pine Script code before opening editor or chart",
+      "sideEffects": "EXTERNAL_SIDE_EFFECT (Sends code to TradingView cloud compiler endpoint)",
+      "limitations": "Requires active internet connection to reach TradingView servers",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "object",
+            "description": "Pine Script source code to compile/validate"
+          }
+        },
+        "required": [
+          "source"
+        ]
+      }
+    },
+    {
+      "name": "pine_compile",
+      "category": "pine_script",
+      "readWrite": "STATE_MUTATING",
+      "description": "Trigger compilation (\"Add to Chart\" or \"Save & Update\") for the script currently in the Pine Editor. WHEN TO USE: Call after setting source code to apply the indicator or strategy to the chart canvas. SIDE EFFECTS: STATE_MUTATING (Attaches or updates study/strategy on chart canvas). LIMITATIONS: Pine Editor must be open with code loaded.",
+      "purpose": "Trigger compilation (\"Add to Chart\" or \"Save & Update\") for the script currently in the Pine Editor.",
+      "whenToUse": "Call after setting source code to apply the indicator or strategy to the chart canvas",
+      "sideEffects": "STATE_MUTATING (Attaches or updates study/strategy on chart canvas)",
+      "limitations": "Pine Editor must be open with code loaded",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "pine_get_console",
+      "category": "pine_script",
+      "readWrite": "READ",
+      "description": "Read runtime logs and compiler messages from the Pine Editor console window (e.g., log.info(), log.error(), log.warning()). WHEN TO USE: Call when debugging Pine Script runtime behavior or inspecting custom log outputs. SIDE EFFECTS: None (Read-only). LIMITATIONS: Console output must be enabled in the script.",
+      "purpose": "Read runtime logs and compiler messages from the Pine Editor console window (e.g., log.info(), log.error(), log.warning()).",
+      "whenToUse": "Call when debugging Pine Script runtime behavior or inspecting custom log outputs",
+      "sideEffects": "None (Read-only)",
+      "limitations": "Console output must be enabled in the script",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "pine_get_errors",
+      "category": "pine_script",
+      "readWrite": "READ",
+      "description": "Retrieve compiler error messages, line numbers, and syntax markers from Monaco editor model. WHEN TO USE: Call immediately after compilation if errors occur to pinpoint line numbers and syntax issues. SIDE EFFECTS: None (Read-only). LIMITATIONS: Requires Pine Editor to be open.",
+      "purpose": "Retrieve compiler error messages, line numbers, and syntax markers from Monaco editor model.",
+      "whenToUse": "Call immediately after compilation if errors occur to pinpoint line numbers and syntax issues",
+      "sideEffects": "None (Read-only)",
+      "limitations": "Requires Pine Editor to be open",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "pine_get_source",
+      "category": "pine_script",
+      "readWrite": "READ",
+      "description": "Get current Pine Script source code from the active TradingView Monaco editor model. WHEN TO USE: Call before refactoring, fixing errors, or saving an existing Pine script. SIDE EFFECTS: None (Read-only). LIMITATIONS: Requires Pine Editor bottom dock panel to be open.",
+      "purpose": "Get current Pine Script source code from the active TradingView Monaco editor model.",
+      "whenToUse": "Call before refactoring, fixing errors, or saving an existing Pine script",
+      "sideEffects": "None (Read-only)",
+      "limitations": "Requires Pine Editor bottom dock panel to be open",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "pine_list_scripts",
+      "category": "pine_script",
+      "readWrite": "READ",
+      "description": "List all user-saved Pine Scripts in TradingView personal library. WHEN TO USE: Call to inspect available saved scripts before opening one with pine_open. SIDE EFFECTS: None (Read-only). LIMITATIONS: Requires user to be logged in to TradingView.",
+      "purpose": "List all user-saved Pine Scripts in TradingView personal library.",
+      "whenToUse": "Call to inspect available saved scripts before opening one with pine_open",
+      "sideEffects": "None (Read-only)",
+      "limitations": "Requires user to be logged in to TradingView",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "pine_new",
+      "category": "pine_script",
+      "readWrite": "STATE_MUTATING",
+      "description": "Create a new blank Pine Script draft in the editor from a standard template (indicator, strategy, or library). WHEN TO USE: Call when starting a new script from scratch rather than modifying existing code. SIDE EFFECTS: STATE_MUTATING (Clears current editor and loads starter template). LIMITATIONS: Unsaved changes in active editor will be overwritten.",
+      "purpose": "Create a new blank Pine Script draft in the editor from a standard template (indicator, strategy, or library).",
+      "whenToUse": "Call when starting a new script from scratch rather than modifying existing code",
+      "sideEffects": "STATE_MUTATING (Clears current editor and loads starter template)",
+      "limitations": "Unsaved changes in active editor will be overwritten",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "object",
+            "description": "Type of script to create"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      }
+    },
+    {
+      "name": "pine_open",
+      "category": "pine_script",
+      "readWrite": "STATE_MUTATING",
+      "description": "Open a saved Pine Script from user library by name. WHEN TO USE: Call to load a specific user script into the Pine Editor. SIDE EFFECTS: STATE_MUTATING (Loads chosen script into editor). LIMITATIONS: Script name must match a script in user library.",
+      "purpose": "Open a saved Pine Script from user library by name.",
+      "whenToUse": "Call to load a specific user script into the Pine Editor",
+      "sideEffects": "STATE_MUTATING (Loads chosen script into editor)",
+      "limitations": "Script name must match a script in user library",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "object",
+            "description": "Name of the saved script to open (case-insensitive match)"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "pine_save",
+      "category": "pine_script",
+      "readWrite": "STATE_MUTATING",
+      "description": "Save the current Pine Script to user library via keyboard shortcut (Ctrl+S / Cmd+S). WHEN TO USE: Call when persisting edits to a saved script in TradingView cloud storage. SIDE EFFECTS: STATE_MUTATING (Saves script changes to user account). LIMITATIONS: Requires Pine Editor to be active.",
+      "purpose": "Save the current Pine Script to user library via keyboard shortcut (Ctrl+S / Cmd+S).",
+      "whenToUse": "Call when persisting edits to a saved script in TradingView cloud storage",
+      "sideEffects": "STATE_MUTATING (Saves script changes to user account)",
+      "limitations": "Requires Pine Editor to be active",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "pine_set_source",
+      "category": "pine_script",
+      "readWrite": "STATE_MUTATING",
+      "description": "Inject Pine Script source code directly into the active Monaco editor model. WHEN TO USE: Call when deploying new Pine Script code, applying bug fixes, or loading templates. SIDE EFFECTS: STATE_MUTATING (Replaces entire Monaco editor text buffer). LIMITATIONS: Requires Pine Editor panel to be open.",
+      "purpose": "Inject Pine Script source code directly into the active Monaco editor model.",
+      "whenToUse": "Call when deploying new Pine Script code, applying bug fixes, or loading templates",
+      "sideEffects": "STATE_MUTATING (Replaces entire Monaco editor text buffer)",
+      "limitations": "Requires Pine Editor panel to be open",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "object",
+            "description": "Pine Script source code to inject"
+          }
+        },
+        "required": [
+          "source"
+        ]
+      }
+    },
+    {
+      "name": "pine_smart_compile",
+      "category": "pine_script",
+      "readWrite": "STATE_MUTATING",
+      "description": "Execute atomic developer compilation loop: detects appropriate compile button, triggers build, polls for Monaco markers, and reports compile status. WHEN TO USE: Preferred tool for compiling Pine Script code directly into the active chart. SIDE EFFECTS: STATE_MUTATING (Modifies chart study state). LIMITATIONS: Requires Pine Editor panel to be open.",
+      "purpose": "Execute atomic developer compilation loop: detects appropriate compile button, triggers build, polls for Monaco markers, and reports compile status.",
+      "whenToUse": "Preferred tool for compiling Pine Script code directly into the active chart",
+      "sideEffects": "STATE_MUTATING (Modifies chart study state)",
+      "limitations": "Requires Pine Editor panel to be open",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "quote_get",
+      "category": "market_data",
+      "readWrite": "READ",
+      "description": "Get real-time market quote snapshot for a ticker (last price, day open/high/low/close, change %, volume). WHEN TO USE: Call for quick price checks without loading historical bar series. SIDE EFFECTS: None (Read-only). LIMITATIONS: Uses current chart ticker if symbol omitted.",
+      "purpose": "Get real-time market quote snapshot for a ticker (last price, day open/high/low/close, change %, volume).",
+      "whenToUse": "Call for quick price checks without loading historical bar series",
+      "sideEffects": "None (Read-only)",
+      "limitations": "Uses current chart ticker if symbol omitted",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "symbol": {
+            "type": "object",
+            "description": "Symbol to quote (blank = current chart symbol)"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "replay_autoplay",
+      "category": "replay_simulation",
+      "readWrite": "STATE_MUTATING",
+      "description": "Toggle automatic bar playback in replay mode with configurable speed. WHEN TO USE: Call when letting historical playback run continuously at set speed. SIDE EFFECTS: STATE_MUTATING (Starts or pauses replay autoplay). LIMITATIONS: Requires Replay mode to be active.",
+      "purpose": "Toggle automatic bar playback in replay mode with configurable speed.",
+      "whenToUse": "Call when letting historical playback run continuously at set speed",
+      "sideEffects": "STATE_MUTATING (Starts or pauses replay autoplay)",
+      "limitations": "Requires Replay mode to be active",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "speed": {
+            "type": "object",
+            "description": "Autoplay delay in ms (lower = faster). Leave empty to just toggle. (default 0)"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "replay_start",
+      "category": "replay_simulation",
+      "readWrite": "STATE_MUTATING",
+      "description": "Enter TradingView Bar Replay mode at a specified historical date or first available bar. WHEN TO USE: Call when initiating historical simulated forward-testing or practicing trade executions bar by bar. SIDE EFFECTS: STATE_MUTATING (Switches chart into Replay mode, rewinds visible price action). LIMITATIONS: Requires market symbol with historical data at chosen date.",
+      "purpose": "Enter TradingView Bar Replay mode at a specified historical date or first available bar.",
+      "whenToUse": "Call when initiating historical simulated forward-testing or practicing trade executions bar by bar",
+      "sideEffects": "STATE_MUTATING (Switches chart into Replay mode, rewinds visible price action)",
+      "limitations": "Requires market symbol with historical data at chosen date",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "object",
+            "description": "Date to start replay from (YYYY-MM-DD format). If omitted, selects first available date."
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "replay_status",
+      "category": "replay_simulation",
+      "readWrite": "READ",
+      "description": "Get current status of Bar Replay mode (active, current replay timestamp, position). WHEN TO USE: Call to check whether chart is currently in replay mode and what timestamp is displaying. SIDE EFFECTS: None (Read-only). LIMITATIONS: None.",
+      "purpose": "Get current status of Bar Replay mode (active, current replay timestamp, position).",
+      "whenToUse": "Call to check whether chart is currently in replay mode and what timestamp is displaying",
+      "sideEffects": "None (Read-only)",
+      "limitations": "None",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "replay_step",
+      "category": "replay_simulation",
+      "readWrite": "STATE_MUTATING",
+      "description": "Advance replay forward by exactly one candle bar. WHEN TO USE: Call during manual forward simulation to reveal subsequent market price action step by step. SIDE EFFECTS: STATE_MUTATING (Advances replay state by one bar). LIMITATIONS: Requires Replay mode to be active.",
+      "purpose": "Advance replay forward by exactly one candle bar.",
+      "whenToUse": "Call during manual forward simulation to reveal subsequent market price action step by step",
+      "sideEffects": "STATE_MUTATING (Advances replay state by one bar)",
+      "limitations": "Requires Replay mode to be active",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "replay_stop",
+      "category": "replay_simulation",
+      "readWrite": "STATE_MUTATING",
+      "description": "Exit Replay mode and restore the live real-time chart data feed. WHEN TO USE: Call when finishing simulation practice to return chart to current live market conditions. SIDE EFFECTS: STATE_MUTATING (Exits replay mode and jumps to live feed). LIMITATIONS: Closes any active replay session.",
+      "purpose": "Exit Replay mode and restore the live real-time chart data feed.",
+      "whenToUse": "Call when finishing simulation practice to return chart to current live market conditions",
+      "sideEffects": "STATE_MUTATING (Exits replay mode and jumps to live feed)",
+      "limitations": "Closes any active replay session",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "replay_trade",
+      "category": "replay_simulation",
+      "readWrite": "STATE_MUTATING",
+      "description": "Execute a simulated trade action in replay mode (buy, sell, or close position). WHEN TO USE: Call when taking practice trades against historical bar replay data. SIDE EFFECTS: STATE_MUTATING (Updates simulated paper trading position in replay). LIMITATIONS: Requires Replay mode to be active.",
+      "purpose": "Execute a simulated trade action in replay mode (buy, sell, or close position).",
+      "whenToUse": "Call when taking practice trades against historical bar replay data",
+      "sideEffects": "STATE_MUTATING (Updates simulated paper trading position in replay)",
+      "limitations": "Requires Replay mode to be active",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "object",
+            "description": "Trade action: buy, sell, or close"
+          }
+        },
+        "required": [
+          "action"
+        ]
+      }
+    },
+    {
+      "name": "session_get",
+      "category": "system_session_diagnostics",
+      "readWrite": "READ",
+      "description": "Retrieve archived session briefing from local session history. Returns today's brief if available, otherwise previous session. WHEN TO USE: Call when reviewing past daily biases or comparing today's price action against previous morning briefings. SIDE EFFECTS: None (Read-only filesystem read). LIMITATIONS: Requires previously saved session file.",
+      "purpose": "Retrieve archived session briefing from local session history. Returns today's brief if available, otherwise previous session.",
+      "whenToUse": "Call when reviewing past daily biases or comparing today's price action against previous morning briefings",
+      "sideEffects": "None (Read-only filesystem read)",
+      "limitations": "Requires previously saved session file",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "object",
+            "description": "Date string YYYY-MM-DD. Defaults to today."
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "session_save",
+      "category": "system_session_diagnostics",
+      "readWrite": "EXTERNAL_SIDE_EFFECT",
+      "description": "Save generated session brief markdown or analysis summary to local session archive (~/.tradingview-mcp/sessions/YYYY-MM-DD.json). WHEN TO USE: Call after completing a morning briefing or daily market analysis to archive observations for future reference. SIDE EFFECTS: EXTERNAL_SIDE_EFFECT (Writes session JSON file to local disk). LIMITATIONS: None.",
+      "purpose": "Save generated session brief markdown or analysis summary to local session archive (~/.tradingview-mcp/sessions/YYYY-MM-DD.json).",
+      "whenToUse": "Call after completing a morning briefing or daily market analysis to archive observations for future reference",
+      "sideEffects": "EXTERNAL_SIDE_EFFECT (Writes session JSON file to local disk)",
+      "limitations": "None",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "brief": {
+            "type": "object",
+            "description": "The brief text to save (output from morning_brief after Claude applies the rules)."
+          },
+          "date": {
+            "type": "object",
+            "description": "Date string YYYY-MM-DD. Defaults to today."
+          }
+        },
+        "required": [
+          "brief"
+        ]
+      }
+    },
+    {
+      "name": "symbol_info",
+      "category": "chart_navigation",
+      "readWrite": "READ",
+      "description": "Get comprehensive instrument metadata for the active symbol (ticker name, exchange, instrument type, tick size, currency, market hours). WHEN TO USE: Call when determining tick precision, pip calculation rules, or exchange session times. SIDE EFFECTS: None (Read-only). LIMITATIONS: Requires an active instrument loaded on chart.",
+      "purpose": "Get comprehensive instrument metadata for the active symbol (ticker name, exchange, instrument type, tick size, currency, market hours).",
+      "whenToUse": "Call when determining tick precision, pip calculation rules, or exchange session times",
+      "sideEffects": "None (Read-only)",
+      "limitations": "Requires an active instrument loaded on chart",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "symbol_search",
+      "category": "chart_navigation",
+      "readWrite": "READ",
+      "description": "Search TradingView database for symbols, exchanges, and financial instruments matching a keyword query. WHEN TO USE: Call to resolve ambiguous ticker names or locate the exact exchange ticker (e.g. searching \"crude oil\" or \"ES\"). SIDE EFFECTS: None (Read-only). LIMITATIONS: Relies on TradingView symbol search backend.",
+      "purpose": "Search TradingView database for symbols, exchanges, and financial instruments matching a keyword query.",
+      "whenToUse": "Call to resolve ambiguous ticker names or locate the exact exchange ticker (e.g. searching \"crude oil\" or \"ES\")",
+      "sideEffects": "None (Read-only)",
+      "limitations": "Relies on TradingView symbol search backend",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "object",
+            "description": "Search query (e.g., \"AAPL\", \"crude oil\", \"ES\")"
+          },
+          "type": {
+            "type": "object",
+            "description": "Filter by type (e.g., \"stock\", \"futures\", \"crypto\", \"forex\")"
+          }
+        },
+        "required": [
+          "query"
+        ]
+      }
+    },
+    {
+      "name": "tab_close",
+      "category": "pane_tab_management",
+      "readWrite": "STATE_MUTATING",
+      "description": "Close the currently active chart tab in TradingView Desktop. WHEN TO USE: Call when finished with a temporary workspace tab to release system memory. SIDE EFFECTS: STATE_MUTATING (Closes active tab). LIMITATIONS: Will not close window if only one tab remains.",
+      "purpose": "Close the currently active chart tab in TradingView Desktop.",
+      "whenToUse": "Call when finished with a temporary workspace tab to release system memory",
+      "sideEffects": "STATE_MUTATING (Closes active tab)",
+      "limitations": "Will not close window if only one tab remains",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "tab_list",
+      "category": "pane_tab_management",
+      "readWrite": "READ",
+      "description": "List all open TradingView desktop application tabs with index, title, and active focus status. WHEN TO USE: Call before managing application tabs to locate specific tab indices. SIDE EFFECTS: None (Read-only). LIMITATIONS: Operates across TradingView Desktop tabs.",
+      "purpose": "List all open TradingView desktop application tabs with index, title, and active focus status.",
+      "whenToUse": "Call before managing application tabs to locate specific tab indices",
+      "sideEffects": "None (Read-only)",
+      "limitations": "Operates across TradingView Desktop tabs",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "tab_new",
+      "category": "pane_tab_management",
+      "readWrite": "STATE_MUTATING",
+      "description": "Open a new chart tab in TradingView Desktop window. WHEN TO USE: Call when opening a fresh chart workspace without disrupting the current tab. SIDE EFFECTS: STATE_MUTATING (Creates new desktop window tab). LIMITATIONS: TradingView Desktop must support multi-tab mode.",
+      "purpose": "Open a new chart tab in TradingView Desktop window.",
+      "whenToUse": "Call when opening a fresh chart workspace without disrupting the current tab",
+      "sideEffects": "STATE_MUTATING (Creates new desktop window tab)",
+      "limitations": "TradingView Desktop must support multi-tab mode",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "tab_switch",
+      "category": "pane_tab_management",
+      "readWrite": "STATE_MUTATING",
+      "description": "Switch active desktop window focus to a target tab by index (0-based). WHEN TO USE: Call when toggling between multiple open chart tabs. SIDE EFFECTS: STATE_MUTATING (Changes active tab focus). LIMITATIONS: Index must be valid within tab_list.",
+      "purpose": "Switch active desktop window focus to a target tab by index (0-based).",
+      "whenToUse": "Call when toggling between multiple open chart tabs",
+      "sideEffects": "STATE_MUTATING (Changes active tab focus)",
+      "limitations": "Index must be valid within tab_list",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "index": {
+            "type": "object",
+            "description": "Tab index (0-based, from tab_list)"
+          }
+        },
+        "required": [
+          "index"
+        ]
+      }
+    },
+    {
+      "name": "tv_discover",
+      "category": "system_session_diagnostics",
+      "readWrite": "READ",
+      "description": "Inspect and discover available TradingView internal API paths, chart widgets, and exposed methods in the active window context. WHEN TO USE: Call when debugging Charting API availability or probing supported internal features. SIDE EFFECTS: None (Read-only). LIMITATIONS: Requires an active, loaded chart page.",
+      "purpose": "Inspect and discover available TradingView internal API paths, chart widgets, and exposed methods in the active window context.",
+      "whenToUse": "Call when debugging Charting API availability or probing supported internal features",
+      "sideEffects": "None (Read-only)",
+      "limitations": "Requires an active, loaded chart page",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "tv_health_check",
+      "category": "system_session_diagnostics",
+      "readWrite": "READ",
+      "description": "Verify CDP connection liveness to TradingView Desktop and return active chart state. WHEN TO USE: Call at session start or when diagnosing connectivity failures before attempting chart commands. SIDE EFFECTS: None (Read-only). LIMITATIONS: Requires TradingView Desktop running with remote debugging enabled on port 9222.",
+      "purpose": "Verify CDP connection liveness to TradingView Desktop and return active chart state.",
+      "whenToUse": "Call at session start or when diagnosing connectivity failures before attempting chart commands",
+      "sideEffects": "None (Read-only)",
+      "limitations": "Requires TradingView Desktop running with remote debugging enabled on port 9222",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "tv_launch",
+      "category": "system_session_diagnostics",
+      "readWrite": "EXTERNAL_SIDE_EFFECT",
+      "description": "Launch TradingView Desktop with Chrome DevTools Protocol (remote debugging) enabled on target port. Auto-detects executable path across Windows, macOS, and Linux. WHEN TO USE: Call automatically when tv_health_check fails due to TradingView not running. SIDE EFFECTS: EXTERNAL_SIDE_EFFECT (Spawns desktop application process, optionally terminates existing instances). LIMITATIONS: Requires TradingView Desktop to be installed on the local system.",
+      "purpose": "Launch TradingView Desktop with Chrome DevTools Protocol (remote debugging) enabled on target port. Auto-detects executable path across Windows, macOS, and Linux.",
+      "whenToUse": "Call automatically when tv_health_check fails due to TradingView not running",
+      "sideEffects": "EXTERNAL_SIDE_EFFECT (Spawns desktop application process, optionally terminates existing instances)",
+      "limitations": "Requires TradingView Desktop to be installed on the local system",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "port": {
+            "type": "object",
+            "description": "CDP port (default 9222)"
+          },
+          "kill_existing": {
+            "type": "object",
+            "description": "Kill existing TradingView instances first (default true)"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "tv_ui_state",
+      "category": "system_session_diagnostics",
+      "readWrite": "READ",
+      "description": "Get real-time UI state of TradingView window: detects open/closed bottom panels, visible dialogs, active tabs, and enabled control buttons. WHEN TO USE: Call before interacting with UI panels (Pine Editor, Strategy Tester) to ensure target DOM elements are present. SIDE EFFECTS: None (Read-only). LIMITATIONS: Assumes standard desktop window hierarchy.",
+      "purpose": "Get real-time UI state of TradingView window: detects open/closed bottom panels, visible dialogs, active tabs, and enabled control buttons.",
+      "whenToUse": "Call before interacting with UI panels (Pine Editor, Strategy Tester) to ensure target DOM elements are present",
+      "sideEffects": "None (Read-only)",
+      "limitations": "Assumes standard desktop window hierarchy",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "ui_click",
+      "category": "ui_automation",
+      "readWrite": "STATE_MUTATING",
+      "description": "Click a TradingView DOM element matching selector strategy (aria-label, data-name, text, class-contains). WHEN TO USE: Call when interacting with custom buttons, dropdowns, or navigation elements not covered by high-level tools. SIDE EFFECTS: STATE_MUTATING (Dispatches click event to DOM element). LIMITATIONS: Target element must be present in DOM.",
+      "purpose": "Click a TradingView DOM element matching selector strategy (aria-label, data-name, text, class-contains).",
+      "whenToUse": "Call when interacting with custom buttons, dropdowns, or navigation elements not covered by high-level tools",
+      "sideEffects": "STATE_MUTATING (Dispatches click event to DOM element)",
+      "limitations": "Target element must be present in DOM",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "by": {
+            "type": "object",
+            "description": "Selector strategy"
+          },
+          "value": {
+            "type": "object",
+            "description": "Value to match against the chosen selector strategy"
+          }
+        },
+        "required": [
+          "by",
+          "value"
+        ]
+      }
+    },
+    {
+      "name": "ui_evaluate",
+      "category": "ui_automation",
+      "readWrite": "STATE_MUTATING",
+      "description": "Evaluate arbitrary JavaScript expression directly in the TradingView page context. WHEN TO USE: Call for specialized low-level browser automation or retrieving unexposed DOM properties. SIDE EFFECTS: STATE_MUTATING (Arbitrary JavaScript execution in page context). LIMITATIONS: Advanced tool; expressions run within page sandbox.",
+      "purpose": "Evaluate arbitrary JavaScript expression directly in the TradingView page context.",
+      "whenToUse": "Call for specialized low-level browser automation or retrieving unexposed DOM properties",
+      "sideEffects": "STATE_MUTATING (Arbitrary JavaScript execution in page context)",
+      "limitations": "Advanced tool; expressions run within page sandbox",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "expression": {
+            "type": "object",
+            "description": "JavaScript expression to evaluate in the page context. Wrap in IIFE for complex logic."
+          }
+        },
+        "required": [
+          "expression"
+        ]
+      }
+    },
+    {
+      "name": "ui_find_element",
+      "category": "ui_automation",
+      "readWrite": "READ",
+      "description": "Locate a UI element by text, aria-label, or CSS selector and return its bounding box coordinates and visibility. WHEN TO USE: Call to verify element existence and obtain coordinates before clicking or hovering. SIDE EFFECTS: None (Read-only DOM query). LIMITATIONS: Scans active DOM tree.",
+      "purpose": "Locate a UI element by text, aria-label, or CSS selector and return its bounding box coordinates and visibility.",
+      "whenToUse": "Call to verify element existence and obtain coordinates before clicking or hovering",
+      "sideEffects": "None (Read-only DOM query)",
+      "limitations": "Scans active DOM tree",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "object",
+            "description": "Text content, aria-label value, or CSS selector to search for"
+          },
+          "strategy": {
+            "type": "object",
+            "description": "Search strategy (default: text)"
+          }
+        },
+        "required": [
+          "query"
+        ]
+      }
+    },
+    {
+      "name": "ui_fullscreen",
+      "category": "ui_automation",
+      "readWrite": "STATE_MUTATING",
+      "description": "Toggle TradingView window chart fullscreen mode. WHEN TO USE: Call when expanding chart canvas for clean screenshot captures or presentation view. SIDE EFFECTS: STATE_MUTATING (Toggles fullscreen mode). LIMITATIONS: None.",
+      "purpose": "Toggle TradingView window chart fullscreen mode.",
+      "whenToUse": "Call when expanding chart canvas for clean screenshot captures or presentation view",
+      "sideEffects": "STATE_MUTATING (Toggles fullscreen mode)",
+      "limitations": "None",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "ui_hover",
+      "category": "ui_automation",
+      "readWrite": "STATE_MUTATING",
+      "description": "Dispatch mouse move event to hover over a UI element matching selector strategy. WHEN TO USE: Call to trigger tooltips, dropdown menus, or interactive hover states. SIDE EFFECTS: STATE_MUTATING (Dispatches mouse move events). LIMITATIONS: Element must be rendered in DOM.",
+      "purpose": "Dispatch mouse move event to hover over a UI element matching selector strategy.",
+      "whenToUse": "Call to trigger tooltips, dropdown menus, or interactive hover states",
+      "sideEffects": "STATE_MUTATING (Dispatches mouse move events)",
+      "limitations": "Element must be rendered in DOM",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "by": {
+            "type": "object",
+            "description": "Selector strategy"
+          },
+          "value": {
+            "type": "object",
+            "description": "Value to match"
+          }
+        },
+        "required": [
+          "by",
+          "value"
+        ]
+      }
+    },
+    {
+      "name": "ui_keyboard",
+      "category": "ui_automation",
+      "readWrite": "STATE_MUTATING",
+      "description": "Dispatch native keyboard key press or key combination (e.g., Enter, Escape, Alt+S, Ctrl+Z) via CDP Input domain. WHEN TO USE: Call when triggering application keyboard shortcuts or dismissing modals. SIDE EFFECTS: STATE_MUTATING (Dispatches keystroke events to focused window element). LIMITATIONS: Requires appropriate window focus.",
+      "purpose": "Dispatch native keyboard key press or key combination (e.g., Enter, Escape, Alt+S, Ctrl+Z) via CDP Input domain.",
+      "whenToUse": "Call when triggering application keyboard shortcuts or dismissing modals",
+      "sideEffects": "STATE_MUTATING (Dispatches keystroke events to focused window element)",
+      "limitations": "Requires appropriate window focus",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "object",
+            "description": "Key to press (e.g., \"Enter\", \"Escape\", \"Tab\", \"a\", \"ArrowUp\")"
+          },
+          "modifiers": {
+            "type": "object",
+            "description": "Modifier keys to hold (e.g., [\"ctrl\", \"shift\"])"
+          }
+        },
+        "required": [
+          "key"
+        ]
+      }
+    },
+    {
+      "name": "ui_mouse_click",
+      "category": "ui_automation",
+      "readWrite": "STATE_MUTATING",
+      "description": "Dispatch mouse click event at exact pixel coordinates (x, y) on the window canvas. WHEN TO USE: Call when clicking a non-DOM canvas target or specific pixel coordinate. SIDE EFFECTS: STATE_MUTATING (Dispatches mouse click at coordinate). LIMITATIONS: Coordinates must be within viewport bounds.",
+      "purpose": "Dispatch mouse click event at exact pixel coordinates (x, y) on the window canvas.",
+      "whenToUse": "Call when clicking a non-DOM canvas target or specific pixel coordinate",
+      "sideEffects": "STATE_MUTATING (Dispatches mouse click at coordinate)",
+      "limitations": "Coordinates must be within viewport bounds",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "x": {
+            "type": "object",
+            "description": "X coordinate (pixels from left)"
+          },
+          "y": {
+            "type": "object",
+            "description": "Y coordinate (pixels from top)"
+          },
+          "button": {
+            "type": "object",
+            "description": "Mouse button (default left)"
+          },
+          "double_click": {
+            "type": "object",
+            "description": "Double click (default false)"
+          }
+        },
+        "required": [
+          "x",
+          "y"
+        ]
+      }
+    },
+    {
+      "name": "ui_open_panel",
+      "category": "ui_automation",
+      "readWrite": "STATE_MUTATING",
+      "description": "Open, close, or toggle bottom dock panels in TradingView window (pine-editor, strategy-tester, watchlist, alerts, trading). WHEN TO USE: Call before interacting with Pine Editor or Strategy Tester to ensure panel visibility. SIDE EFFECTS: STATE_MUTATING (Alters bottom panel visibility state). LIMITATIONS: Supported panels: pine-editor, strategy-tester, watchlist, alerts, trading.",
+      "purpose": "Open, close, or toggle bottom dock panels in TradingView window (pine-editor, strategy-tester, watchlist, alerts, trading).",
+      "whenToUse": "Call before interacting with Pine Editor or Strategy Tester to ensure panel visibility",
+      "sideEffects": "STATE_MUTATING (Alters bottom panel visibility state)",
+      "limitations": "Supported panels: pine-editor, strategy-tester, watchlist, alerts, trading",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "panel": {
+            "type": "object",
+            "description": "Panel name"
+          },
+          "action": {
+            "type": "object",
+            "description": "Action to perform"
+          }
+        },
+        "required": [
+          "panel",
+          "action"
+        ]
+      }
+    },
+    {
+      "name": "ui_scroll",
+      "category": "ui_automation",
+      "readWrite": "STATE_MUTATING",
+      "description": "Dispatch mouse wheel scroll events across chart canvas or page in specified direction. WHEN TO USE: Call when scrolling through long lists, logs, or panning canvas. SIDE EFFECTS: STATE_MUTATING (Dispatches wheel events). LIMITATIONS: Default amount is 300px.",
+      "purpose": "Dispatch mouse wheel scroll events across chart canvas or page in specified direction.",
+      "whenToUse": "Call when scrolling through long lists, logs, or panning canvas",
+      "sideEffects": "STATE_MUTATING (Dispatches wheel events)",
+      "limitations": "Default amount is 300px",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "direction": {
+            "type": "object",
+            "description": "Scroll direction"
+          },
+          "amount": {
+            "type": "object",
+            "description": "Scroll amount in pixels (default 300)"
+          }
+        },
+        "required": [
+          "direction"
+        ]
+      }
+    },
+    {
+      "name": "ui_type_text",
+      "category": "ui_automation",
+      "readWrite": "STATE_MUTATING",
+      "description": "Type text characters directly into currently focused input or textarea element via CDP Input domain. WHEN TO USE: Call when filling out search fields, alert parameters, or text inputs. SIDE EFFECTS: STATE_MUTATING (Inserts text into focused DOM field). LIMITATIONS: Target element must be actively focused.",
+      "purpose": "Type text characters directly into currently focused input or textarea element via CDP Input domain.",
+      "whenToUse": "Call when filling out search fields, alert parameters, or text inputs",
+      "sideEffects": "STATE_MUTATING (Inserts text into focused DOM field)",
+      "limitations": "Target element must be actively focused",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "object",
+            "description": "Text to type into the focused element"
+          }
+        },
+        "required": [
+          "text"
+        ]
+      }
+    },
+    {
+      "name": "watchlist_add",
+      "category": "alerts_watchlist",
+      "readWrite": "STATE_MUTATING",
+      "description": "Add a financial instrument/ticker to the active TradingView watchlist. WHEN TO USE: Call when tracking a newly discovered symbol for continued monitoring. SIDE EFFECTS: STATE_MUTATING (Adds symbol to user watchlist). LIMITATIONS: Symbol must be valid on TradingView.",
+      "purpose": "Add a financial instrument/ticker to the active TradingView watchlist.",
+      "whenToUse": "Call when tracking a newly discovered symbol for continued monitoring",
+      "sideEffects": "STATE_MUTATING (Adds symbol to user watchlist)",
+      "limitations": "Symbol must be valid on TradingView",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "symbol": {
+            "type": "object",
+            "description": "Symbol to add (e.g., AAPL, BTCUSD, ES1!, NYMEX:CL1!)"
+          }
+        },
+        "required": [
+          "symbol"
+        ]
+      }
+    },
+    {
+      "name": "watchlist_get",
+      "category": "alerts_watchlist",
+      "readWrite": "READ",
+      "description": "Get all financial symbols from current TradingView watchlist with real-time last price, absolute price change, and percentage change. WHEN TO USE: Call when scanning market watchlists or monitoring asset universe for opportunities. SIDE EFFECTS: None (Read-only). LIMITATIONS: Requires watchlist to have symbols loaded.",
+      "purpose": "Get all financial symbols from current TradingView watchlist with real-time last price, absolute price change, and percentage change.",
+      "whenToUse": "Call when scanning market watchlists or monitoring asset universe for opportunities",
+      "sideEffects": "None (Read-only)",
+      "limitations": "Requires watchlist to have symbols loaded",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    }
+  ]
+}

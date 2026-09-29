@@ -71,4 +71,18 @@ export function registerChartTools(server) {
     try { return jsonResult(await core.symbolSearch({ query, type })); }
     catch (err) { return jsonResult({ success: false, error: err.message }, true); }
   });
+
+  server.tool('chart_get_snapshot', 'Get authoritative atomic snapshot of current chart (symbol, resolution, lastBarTime, barCount)', {}, async () => {
+    try { return jsonResult(await core.getChartSnapshot()); }
+    catch (err) { return jsonResult({ success: false, error: err.message }, true); }
+  });
+
+  server.tool('chart_get_multi_timeframe', 'Perform atomic multi-timeframe scan for a symbol across multiple resolutions (e.g., D, 240, 60, 15, 5) without race conditions', {
+    symbol: z.string().optional().describe('Symbol to scan (defaults to current chart symbol)'),
+    timeframes: z.array(z.string()).optional().describe('Array of timeframes to scan (default: ["D", "240", "60", "15", "5"])'),
+    count: z.coerce.number().optional().describe('Number of bars per timeframe (default 100)'),
+  }, async ({ symbol, timeframes, count }) => {
+    try { return jsonResult(await core.getMultiTimeframeData({ symbol, timeframes, count })); }
+    catch (err) { return jsonResult({ success: false, error: err.message }, true); }
+  });
 }

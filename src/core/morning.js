@@ -9,6 +9,7 @@ import { join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as chart from "./chart.js";
 import * as data from "./data.js";
+import { withChartTransaction } from "../connection.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = resolve(__dirname, "../../");
@@ -87,24 +88,26 @@ export async function runBrief({ rules_path } = {}) {
 
   for (const symbol of watchlist) {
     try {
-      await chart.setSymbol({ symbol });
-      await new Promise((r) => setTimeout(r, 900));
-      await chart.setTimeframe({ timeframe: default_timeframe });
-      await new Promise((r) => setTimeout(r, 900));
+      const scanResult = await withChartTransaction(`morning:scan:${symbol}`, async () => {
+        await chart.setSymbol({ symbol });
+        await chart.setTimeframe({ timeframe: default_timeframe });
 
-      const [state, indicators, quote] = await Promise.all([
-        chart.getState(),
-        data.getStudyValues(),
-        data.getQuote({}),
-      ]);
+        const [state, indicators, quote] = await Promise.all([
+          chart.getState(),
+          data.getStudyValues(),
+          data.getQuote({}),
+        ]);
 
-      results.push({
-        symbol,
-        timeframe: default_timeframe,
-        state,
-        indicators,
-        quote,
+        return {
+          symbol,
+          timeframe: default_timeframe,
+          state,
+          indicators,
+          quote,
+        };
       });
+
+      results.push(scanResult);
     } catch (err) {
       results.push({ symbol, error: err.message });
     }
@@ -113,9 +116,12 @@ export async function runBrief({ rules_path } = {}) {
   // Restore original chart state
   if (originalSymbol) {
     try {
-      await chart.setSymbol({ symbol: originalSymbol });
-      if (originalTimeframe)
-        await chart.setTimeframe({ timeframe: originalTimeframe });
+      await withChartTransaction('morning:restore', async () => {
+        await chart.setSymbol({ symbol: originalSymbol });
+        if (originalTimeframe) {
+          await chart.setTimeframe({ timeframe: originalTimeframe });
+        }
+      });
     } catch (_) {}
   }
 

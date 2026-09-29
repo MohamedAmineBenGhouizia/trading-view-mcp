@@ -2,7 +2,7 @@
  * Core screenshot/capture logic.
  */
 import { getClient, evaluate, getChartCollection } from "../connection.js";
-import { writeFileSync, mkdirSync } from "fs";
+import { writeFile, mkdir } from "fs/promises";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 
@@ -21,7 +21,7 @@ function sanitiseFilename(name) {
 }
 
 export async function captureScreenshot({ region, filename, method } = {}) {
-  mkdirSync(SCREENSHOT_DIR, { recursive: true });
+  await mkdir(SCREENSHOT_DIR, { recursive: true });
 
   const ts = new Date().toISOString().replace(/[:.]/g, "-");
   const fname = filename ? sanitiseFilename(filename) : `tv_${region}_${ts}`;
@@ -87,13 +87,14 @@ export async function captureScreenshot({ region, filename, method } = {}) {
   if (clip) params.clip = clip;
 
   const { data } = await client.Page.captureScreenshot(params);
-  writeFileSync(filePath, Buffer.from(data, "base64"));
+  const buffer = Buffer.from(data, "base64");
+  await writeFile(filePath, buffer);
 
   return {
     success: true,
     method: "cdp",
     file_path: filePath,
     region,
-    size_bytes: Buffer.from(data, "base64").length,
+    size_bytes: buffer.length,
   };
 }

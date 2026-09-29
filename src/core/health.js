@@ -225,16 +225,11 @@ export async function launch({ port, kill_existing } = {}) {
   for (let i = 0; i < 15; i++) {
     await new Promise(r => setTimeout(r, 1000));
     try {
-      const http = await import('http');
-      const ready = await new Promise((resolve) => {
-        http.get(`http://localhost:${cdpPort}/json/version`, (res) => {
-          let data = '';
-          res.on('data', (chunk) => data += chunk);
-          res.on('end', () => resolve(data));
-        }).on('error', () => resolve(null));
+      const resp = await fetch(`http://localhost:${cdpPort}/json/version`, {
+        signal: AbortSignal.timeout(1500),
       });
-      if (ready) {
-        const info = JSON.parse(ready);
+      if (resp.ok) {
+        const info = await resp.json();
         return {
           success: true, platform, binary: tvPath, pid: child.pid,
           cdp_port: cdpPort, cdp_url: `http://localhost:${cdpPort}`,

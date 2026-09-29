@@ -2,6 +2,10 @@
  * Core data access logic.
  */
 import { evaluate, evaluateAsync, KNOWN_PATHS } from '../connection.js';
+import { symbolsMatch, normalizeResolution } from '../wait.js';
+import { chartDataCache } from './cache.js';
+import { chartStateManager } from './state-manager.js';
+import { timeframeToSeconds } from '../analysis/multi-timeframe.js';
 
 const MAX_OHLCV_BARS = 500;
 const MAX_TRADES = 20;
@@ -59,14 +63,36 @@ function buildGraphicsJS(collectionName, mapKey, filter) {
   `;
 }
 
-export async function getOhlcv({ count, summary } = {}) {
+export async function getOhlcv({ count, summary, closedOnly = false, expectedSymbol, expectedTf } = {}) {
   const limit = Math.min(count || 100, MAX_OHLCV_BARS);
+  const cacheKey = chartDataCache.buildKey('getOhlcv', {
+    count: limit,
+    summary: !!summary,
+    closedOnly: !!closedOnly,
+    expectedSymbol: expectedSymbol || '',
+    expectedTf: expectedTf || '',
+  });
+
+  const cached = chartDataCache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
   let data;
   try {
     data = await evaluate(`
       (function() {
         var bars = ${BARS_PATH};
         if (!bars || typeof bars.lastIndex !== 'function') return null;
+        var sym = '';
+        var res = '';
+        try {
+          var api = window.TradingViewApi;
+          if (api) {
+            if (typeof api.symbol === 'function') sym = api.symbol();
+            if (typeof api.resolution === 'function') res = api.resolution();
+          }
+        } catch(e) {}
         var result = [];
         var end = bars.lastIndex();
         var start = Math.max(bars.firstIndex(), end - ${limit} + 1);
@@ -74,7 +100,7 @@ export async function getOhlcv({ count, summary } = {}) {
           var v = bars.valueAt(i);
           if (v) result.push({time: v[0], open: v[1], high: v[2], low: v[3], close: v[4], volume: v[5] || 0});
         }
-        return {bars: result, total_bars: bars.size(), source: 'direct_bars'};
+        return {bars: result, total_bars: bars.size(), source: 'direct_bars', symbol: sym, resolution: res};
       })()
     `);
   } catch { data = null; }
@@ -83,15 +109,81 @@ export async function getOhlcv({ count, summary } = {}) {
     throw new Error('Could not extract OHLCV data. The chart may still be loading.');
   }
 
-  if (summary) {
-    const bars = data.bars;
-    const highs = bars.map(b => b.high);
-    const lows = bars.map(b => b.low);
-    const volumes = bars.map(b => b.volume);
-    const first = bars[0];
-    const last = bars[bars.length - 1];
+  if (expectedSymbol && data.symbol && !symbolsMatch(data.symbol, expectedSymbol)) {
+    throw new Error(`OHLCV data symbol mismatch: expected ${expectedSymbol}, got ${data.symbol}`);
+  }
+  if (expectedTf && data.resolution && normalizeResolution(data.resolution) !== normalizeResolution(expectedTf)) {
+    throw new Error(`OHLCV data timeframe mismatch: expected ${expectedTf}, got ${data.resolution}`);
+  }
+
+  // Update chart state manager with authoritative values
+  chartStateManager.updateState({
+    symbol: data.symbol,
+    timeframe: data.resolution,
+    resolution: data.resolution,
+    barCount: data.total_bars,
+    lastBarTime: data.bars[data.bars.length - 1]?.time || null,
+    dataReady: true,
+  });
+
+  const intervalSec = timeframeToSeconds(data.resolution || '15');
+  const nowSec = Math.floor(Date.now() / 1000);
+
+  // Label bars with barClosed status
+  let rawCandles = data.bars.map((b, idx) => {
+    const isLast = idx === data.bars.length - 1;
+    const barSec = b.time > 1e11 ? Math.floor(b.time / 1000) : b.time;
+    const isClosed = !isLast || (barSec + intervalSec <= nowSec);
     return {
-      success: true, bar_count: bars.length,
+      time: b.time,
+      open: b.open,
+      high: b.high,
+      low: b.low,
+      close: b.close,
+      volume: b.volume,
+      barClosed: isClosed,
+    };
+  });
+
+  const liveCandle = !rawCandles[rawCandles.length - 1]?.barClosed ? rawCandles[rawCandles.length - 1] : null;
+
+  if (closedOnly && liveCandle && rawCandles.length > 1) {
+    rawCandles = rawCandles.slice(0, -1);
+  }
+
+  const candles = rawCandles;
+  const first = candles[0];
+  const last = candles[candles.length - 1];
+  const lastBarClosed = !!last?.barClosed;
+  const lastTimeMs = last?.time > 1e11 ? last.time : (last?.time || 0) * 1000;
+  const ageMs = Math.max(0, Date.now() - lastTimeMs);
+
+  const dataQuality = {
+    ready: true,
+    complete: data.total_bars >= candles.length,
+    stale: ageMs > (intervalSec * 3 * 1000),
+    ageMs,
+    barClosed: lastBarClosed,
+  };
+
+  const provenance = {
+    source: 'TradingView',
+    symbol: data.symbol || undefined,
+    timeframe: data.resolution || undefined,
+    retrievedAt: Date.now(),
+    lastBarTime: last?.time || 0,
+  };
+
+  if (summary) {
+    const highs = candles.map(b => b.high);
+    const lows = candles.map(b => b.low);
+    const volumes = candles.map(b => b.volume);
+    const response = {
+      success: true,
+      symbol: data.symbol || undefined,
+      timeframe: data.resolution || undefined,
+      resolution: data.resolution || undefined,
+      bar_count: candles.length,
       period: { from: first.time, to: last.time },
       open: first.open, close: last.close,
       high: Math.max(...highs), low: Math.min(...lows),
@@ -99,11 +191,37 @@ export async function getOhlcv({ count, summary } = {}) {
       change: Math.round((last.close - first.open) * 100) / 100,
       change_pct: Math.round(((last.close - first.open) / first.open) * 10000) / 100 + '%',
       avg_volume: Math.round(volumes.reduce((a, b) => a + b, 0) / volumes.length),
-      last_5_bars: bars.slice(-5),
+      last_5_bars: candles.slice(-5),
+      liveCandle,
+      dataQuality,
+      provenance,
     };
+    chartDataCache.set(cacheKey, response);
+    return response;
   }
 
-  return { success: true, bar_count: data.bars.length, total_available: data.total_bars, source: data.source, bars: data.bars };
+  const response = {
+    success: true,
+    symbol: data.symbol || undefined,
+    timeframe: data.resolution || undefined,
+    resolution: data.resolution || undefined,
+    count: candles.length,
+    bar_count: candles.length,
+    firstTimestamp: first?.time || 0,
+    lastTimestamp: last?.time || 0,
+    barClosed: lastBarClosed,
+    retrievedAt: Date.now(),
+    total_available: data.total_bars,
+    source: data.source,
+    liveCandle,
+    dataQuality,
+    provenance,
+    candles,
+    bars: candles, // Backward compatibility alias
+  };
+
+  chartDataCache.set(cacheKey, response);
+  return response;
 }
 
 export async function getIndicator({ entity_id }) {

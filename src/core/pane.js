@@ -2,7 +2,7 @@
  * Core pane/layout management logic.
  * Controls multi-chart layouts (split panes) in TradingView.
  */
-import { evaluate, evaluateAsync, getClient } from '../connection.js';
+import { evaluate, evaluateAsync, getClient, withChartTransaction } from '../connection.js';
 import { waitForCondition, waitForChartReady } from '../wait.js';
 
 const CWC = 'window.TradingViewApi._chartWidgetCollection';
@@ -81,57 +81,61 @@ export async function list() {
  * @param {string} layout - Layout code: s, 2h, 2v, 2-1, 1-2, 3h, 3v, 4, 6, 8, etc.
  */
 export async function setLayout({ layout }) {
-  const code = layout.toLowerCase().replace(/\s+/g, '');
+  return withChartTransaction(`pane:setLayout:${layout}`, async () => {
+    const code = layout.toLowerCase().replace(/\s+/g, '');
 
-  // Map friendly names to codes
-  const aliases = {
-    'single': 's', '1': 's', '1x1': 's',
-    '2x1': '2h', '1x2': '2v',
-    '2x2': '4', 'grid': '4', 'quad': '4',
-    '3x1': '3h', '1x3': '3v',
-  };
-  const resolved = aliases[code] || code;
+    // Map friendly names to codes
+    const aliases = {
+      'single': 's', '1': 's', '1x1': 's',
+      '2x1': '2h', '1x2': '2v',
+      '2x2': '4', 'grid': '4', 'quad': '4',
+      '3x1': '3h', '1x3': '3v',
+    };
+    const resolved = aliases[code] || code;
 
-  if (!LAYOUT_NAMES[resolved]) {
-    const available = Object.entries(LAYOUT_NAMES).map(([k, v]) => `  ${k} — ${v}`).join('\n');
-    throw new Error(`Unknown layout "${layout}". Available layouts:\n${available}`);
-  }
+    if (!LAYOUT_NAMES[resolved]) {
+      const available = Object.entries(LAYOUT_NAMES).map(([k, v]) => `  ${k} — ${v}`).join('\n');
+      throw new Error(`Unknown layout "${layout}". Available layouts:\n${available}`);
+    }
 
-  await evaluateAsync(`${CWC}.setLayout(${JSON.stringify(resolved)})`);
-  await waitForCondition(async () => {
-    const s = await list();
-    return s && s.layout === resolved;
-  }, { timeout: 1000, interval: 50 });
+    await evaluateAsync(`${CWC}.setLayout(${JSON.stringify(resolved)})`);
+    await waitForCondition(async () => {
+      const s = await list();
+      return s && s.layout === resolved;
+    }, { timeout: 2000, interval: 50, label: `pane.setLayout(${resolved})` });
 
-  const state = await list();
-  return {
-    success: true,
-    layout: resolved,
-    layout_name: LAYOUT_NAMES[resolved],
-    chart_count: state.chart_count,
-    panes: state.panes,
-  };
+    const state = await list();
+    return {
+      success: true,
+      layout: resolved,
+      layout_name: LAYOUT_NAMES[resolved],
+      chart_count: state.chart_count,
+      panes: state.panes,
+    };
+  });
 }
 
 /**
  * Focus a specific pane by index.
  */
 export async function focus({ index }) {
-  const idx = Number(index);
-  const result = await evaluate(`
-    (function() {
-      var cwc = ${CWC};
-      var all = cwc.getAll();
-      if (${idx} >= all.length) return { error: 'Pane index ' + ${idx} + ' out of range (have ' + all.length + ' panes)' };
-      var chart = all[${idx}];
-      // Click the main div to activate it
-      if (chart._mainDiv) chart._mainDiv.click();
-      return { focused: ${idx}, total: all.length };
-    })()
-  `);
+  return withChartTransaction(`pane:focus:${index}`, async () => {
+    const idx = Number(index);
+    const result = await evaluate(`
+      (function() {
+        var cwc = ${CWC};
+        var all = cwc.getAll();
+        if (${idx} >= all.length) return { error: 'Pane index ' + ${idx} + ' out of range (have ' + all.length + ' panes)' };
+        var chart = all[${idx}];
+        // Click the main div to activate it
+        if (chart._mainDiv) chart._mainDiv.click();
+        return { focused: ${idx}, total: all.length };
+      })()
+    `);
 
-  if (result?.error) throw new Error(result.error);
-  return { success: true, focused_index: result.focused, total_panes: result.total };
+    if (result?.error) throw new Error(result.error);
+    return { success: true, focused_index: result.focused, total_panes: result.total };
+  });
 }
 
 /**
@@ -139,23 +143,36 @@ export async function focus({ index }) {
  * Works by focusing the pane, then using the active chart's setSymbol.
  */
 export async function setSymbol({ index, symbol }) {
-  const idx = Number(index);
+  return withChartTransaction(`pane:setSymbol:${index}:${symbol}`, async () => {
+    const idx = Number(index);
 
-  // Focus the target pane first
-  await focus({ index: idx });
-  await waitForCondition(async () => {
-    const s = await list();
-    return s && s.active_index === idx;
-  }, { timeout: 600, interval: 50 });
+    // Focus the target pane first
+    const focusResult = await evaluate(`
+      (function() {
+        var cwc = ${CWC};
+        var all = cwc.getAll();
+        if (${idx} >= all.length) return { error: 'Pane index ' + ${idx} + ' out of range (have ' + all.length + ' panes)' };
+        var chart = all[${idx}];
+        if (chart._mainDiv) chart._mainDiv.click();
+        return { focused: ${idx}, total: all.length };
+      })()
+    `);
+    if (focusResult?.error) throw new Error(focusResult.error);
 
-  // Now set symbol on the now-active chart
-  await evaluate(`
-    (function() {
-      var chart = window.TradingViewApi._activeChartWidgetWV.value();
-      chart.setSymbol(${JSON.stringify(symbol)}, {});
-    })()
-  `);
-  await waitForChartReady(symbol);
+    await waitForCondition(async () => {
+      const s = await list();
+      return s && s.active_index === idx;
+    }, { timeout: 1500, interval: 50, label: `pane.setSymbol.focus(${idx})` });
 
-  return { success: true, index: idx, symbol };
+    // Now set symbol on the now-active chart
+    await evaluate(`
+      (function() {
+        var chart = window.TradingViewApi._activeChartWidgetWV.value();
+        chart.setSymbol(${JSON.stringify(symbol)}, {});
+      })()
+    `);
+    await waitForChartReady(symbol);
+
+    return { success: true, index: idx, symbol };
+  });
 }

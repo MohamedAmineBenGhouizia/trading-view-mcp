@@ -1,75 +1,87 @@
 /**
  * Core alert logic.
  */
-import { evaluate, evaluateAsync, getClient } from '../connection.js';
+import { evaluate, evaluateAsync, getClient, withChartTransaction } from '../connection.js';
+import { waitForCondition } from '../wait.js';
 
 export async function create({ condition, price, message }) {
-  const opened = await evaluate(`
-    (function() {
-      var btn = document.querySelector('[aria-label="Create Alert"]')
-        || document.querySelector('[data-name="alerts"]');
-      if (btn) { btn.click(); return true; }
-      return false;
-    })()
-  `);
-
-  if (!opened) {
-    const client = await getClient();
-    await client.Input.dispatchKeyEvent({ type: 'keyDown', modifiers: 1, key: 'a', code: 'KeyA', windowsVirtualKeyCode: 65 });
-    await client.Input.dispatchKeyEvent({ type: 'keyUp', key: 'a', code: 'KeyA' });
-  }
-
-  await new Promise(r => setTimeout(r, 1000));
-
-  const priceSet = await evaluate(`
-    (function() {
-      var inputs = document.querySelectorAll('[class*="alert"] input[type="text"], [class*="alert"] input[type="number"]');
-      for (var i = 0; i < inputs.length; i++) {
-        var label = inputs[i].closest('[class*="row"]')?.querySelector('[class*="label"]');
-        if (label && /value|price/i.test(label.textContent)) {
-          var nativeSet = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
-          nativeSet.call(inputs[i], ${JSON.stringify(String(price))});
-          inputs[i].dispatchEvent(new Event('input', { bubbles: true }));
-          inputs[i].dispatchEvent(new Event('change', { bubbles: true }));
-          return true;
-        }
-      }
-      if (inputs.length > 0) {
-        var nativeSet = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
-        nativeSet.call(inputs[0], ${JSON.stringify(String(price))});
-        inputs[0].dispatchEvent(new Event('input', { bubbles: true }));
-        return true;
-      }
-      return false;
-    })()
-  `);
-
-  if (message) {
-    await evaluate(`
+  return withChartTransaction('alerts:create', async () => {
+    const opened = await evaluate(`
       (function() {
-        var textarea = document.querySelector('[class*="alert"] textarea')
-          || document.querySelector('textarea[placeholder*="message"]');
-        if (textarea) {
-          var nativeSet = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set;
-          nativeSet.call(textarea, ${JSON.stringify(message)});
-          textarea.dispatchEvent(new Event('input', { bubbles: true }));
-        }
+        var btn = document.querySelector('[aria-label="Create Alert"]')
+          || document.querySelector('[data-name="alerts"]');
+        if (btn) { btn.click(); return true; }
+        return false;
       })()
     `);
-  }
 
-  await new Promise(r => setTimeout(r, 500));
-  const created = await evaluate(`
-    (function() {
-      var btns = document.querySelectorAll('button[data-name="submit"], button');
-      for (var i = 0; i < btns.length; i++) {
-        if (/^create$/i.test(btns[i].textContent.trim())) { btns[i].click(); return true; }
-      }
-      return false;
-    })()
-  `);
+    if (!opened) {
+      const client = await getClient();
+      await client.Input.dispatchKeyEvent({ type: 'keyDown', modifiers: 1, key: 'a', code: 'KeyA', windowsVirtualKeyCode: 65 });
+      await client.Input.dispatchKeyEvent({ type: 'keyUp', key: 'a', code: 'KeyA' });
+    }
 
-  return { success: !!created, price, condition, message: message || '(none)', price_set: !!priceSet, source: 'dom_fallback' };
+    // Wait reactively for alert dialog inputs to appear
+    await waitForCondition(async () => {
+      return await evaluate(`
+        (function() {
+          var inputs = document.querySelectorAll('[class*="alert"] input[type="text"], [class*="alert"] input[type="number"]');
+          return inputs.length > 0;
+        })()
+      `);
+    }, { timeout: 2000, interval: 50, label: 'alerts.waitForModal' });
+
+    const priceSet = await evaluate(`
+      (function() {
+        var inputs = document.querySelectorAll('[class*="alert"] input[type="text"], [class*="alert"] input[type="number"]');
+        for (var i = 0; i < inputs.length; i++) {
+          var label = inputs[i].closest('[class*="row"]')?.querySelector('[class*="label"]');
+          if (label && /value|price/i.test(label.textContent)) {
+            var nativeSet = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+            nativeSet.call(inputs[i], ${JSON.stringify(String(price))});
+            inputs[i].dispatchEvent(new Event('input', { bubbles: true }));
+            inputs[i].dispatchEvent(new Event('change', { bubbles: true }));
+            return true;
+          }
+        }
+        if (inputs.length > 0) {
+          var nativeSet = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+          nativeSet.call(inputs[0], ${JSON.stringify(String(price))});
+          inputs[0].dispatchEvent(new Event('input', { bubbles: true }));
+          return true;
+        }
+        return false;
+      })()
+    `);
+
+    if (message) {
+      await evaluate(`
+        (function() {
+          var textarea = document.querySelector('[class*="alert"] textarea')
+            || document.querySelector('textarea[placeholder*="message"]');
+          if (textarea) {
+            var nativeSet = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set;
+            nativeSet.call(textarea, ${JSON.stringify(message)});
+            textarea.dispatchEvent(new Event('input', { bubbles: true }));
+          }
+        })()
+      `);
+    }
+
+    const created = await waitForCondition(async () => {
+      return await evaluate(`
+        (function() {
+          var btns = document.querySelectorAll('button[data-name="submit"], button');
+          for (var i = 0; i < btns.length; i++) {
+            if (/^create$/i.test(btns[i].textContent.trim())) { btns[i].click(); return true; }
+          }
+          return false;
+        })()
+      `);
+    }, { timeout: 1500, interval: 50, label: 'alerts.submit' });
+
+    return { success: !!created, price, condition, message: message || '(none)', price_set: !!priceSet, source: 'dom_fallback' };
+  });
 }
 
 export async function list() {

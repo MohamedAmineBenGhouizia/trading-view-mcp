@@ -15,6 +15,7 @@ export * as watchlist from './watchlist.js';
 export * as indicators from './indicators.js';
 export * as ui from './ui.js';
 export * as analysis from './analysis.js';
+export * as smartVolume from './smart-volume.js';
 export * as state from './state-manager.js';
 export * as cache from './cache.js';
 export * as errors from './errors.js';

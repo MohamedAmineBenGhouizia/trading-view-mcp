@@ -252,3 +252,6 @@ export async function getRecentChanges({ sinceTimestamp = 0, sinceGeneration = 0
     provenance: ohlcv.provenance,
   };
 }
+
+export { getSmartVolumeAnalysis } from './smart-volume.js';
+

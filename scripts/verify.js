@@ -40,6 +40,7 @@ runStep('Unit & Workflow Tests', process.execPath, [
   'tests/market_structure.test.js',
   'tests/market_regime.test.js',
   'tests/zones_volume_divergences.test.js',
+  'tests/smart_volume.test.js',
   'tests/multi_timeframe.test.js',
   'tests/security_serialization.test.js',
   'tests/error_contract.test.js',

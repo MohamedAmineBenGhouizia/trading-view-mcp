@@ -1,7 +1,7 @@
 {
   "version": "2.1.0",
-  "generatedAt": "2026-09-29T08:59:29.725Z",
-  "toolCount": 89,
+  "generatedAt": "2026-09-29T10:14:56.509Z",
+  "toolCount": 90,
   "categories": {
     "market_intelligence": "Deterministic quantitative market structure, regimes, zones, and MTF alignment",
     "chart_navigation": "Chart symbol, resolution, range, zoom, and multi-timeframe navigation",
@@ -954,6 +954,46 @@
           "sinceGeneration": {
             "type": "object",
             "description": "Chart generation ID from previous analysis"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "market_get_smart_volume",
+      "category": "market_intelligence",
+      "readWrite": "READ",
+      "description": "Analyze institutional-style market activity proxy (RVOL, robust z-score, Wyckoffian effort vs result, absorption, initiative moves, exhaustion, sweeps, and accumulation/distribution). WHEN TO USE: Call when evaluating volume anomalies, liquidity sweeps, or market participation conviction. NO SIDE EFFECTS. LIMITATIONS: On CFD/Forex feeds (like OANDA:XAUUSD), volume reflects tick activity rather than centralized transaction contracts; activity is inferred/heuristic.",
+      "purpose": "Analyze institutional-style market activity proxy (RVOL, robust z-score, Wyckoffian effort vs result, absorption, initiative moves, exhaustion, sweeps, and accumulation/distribution).",
+      "whenToUse": "Call when evaluating volume anomalies, liquidity sweeps, or market participation conviction",
+      "sideEffects": "None (Read-only)",
+      "limitations": "On CFD/Forex feeds (like OANDA:XAUUSD), volume reflects tick activity rather than centralized transaction contracts; activity is inferred/heuristic",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "lookback": {
+            "type": "object",
+            "description": "Rolling lookback period for statistical volume profiling (default 100)"
+          },
+          "sensitivity": {
+            "type": "object",
+            "description": "Detection sensitivity multiplier (default 1.0)"
+          },
+          "session": {
+            "type": "object",
+            "description": "Session window to evaluate (AUTO, ASIA, LONDON, NEW_YORK, LONDON_NY_OVERLAP)"
+          },
+          "includeMultiTimeframe": {
+            "type": "object",
+            "description": "Whether to evaluate cross-timeframe smart volume alignment"
+          },
+          "expectedSymbol": {
+            "type": "object",
+            "description": "Optional symbol to verify against chart state"
+          },
+          "expectedTf": {
+            "type": "object",
+            "description": "Optional timeframe to verify against chart state"
           }
         },
         "required": []

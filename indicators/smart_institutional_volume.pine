@@ -1,0 +1,142 @@
+//@version=6
+indicator('Smart Institutional Activity Proxy [TradingView MCP]', shorttitle='SmartVolume', overlay=false, precision=1)
+
+// ============================================================================
+// 1. INPUTS & CONFIGURATION
+// ============================================================================
+grp_engine = 'Engine Configuration'
+lookbackPeriod     = input.int(100, 'Statistical Lookback Period', minval=20, maxval=500, group=grp_engine)
+baselineLength     = input.int(20, 'Volume Baseline SMA Length', minval=5, maxval=100, group=grp_engine)
+displayMode        = input.string('Detailed', 'Display Mode', options=['Detailed', 'Minimal'], group=grp_engine)
+atrLength          = input.int(14, 'ATR Length for Range Normalization', minval=1, group=grp_engine)
+
+grp_thresholds = 'Detection Sensitivity'
+rvolAnomalyThresh  = input.float(2.0, 'RVOL Anomaly Threshold', minval=1.2, step=0.1, group=grp_thresholds)
+robustZThresh      = input.float(2.0, 'Robust Z-Score Threshold', minval=1.0, step=0.1, group=grp_thresholds)
+showMarkers        = input.bool(true, 'Show Event Markers (ABS, INI, EXH, SWP, BO)', group=grp_thresholds)
+highlightBg        = input.bool(true, 'Highlight Anomaly Backgrounds', group=grp_thresholds)
+
+// ============================================================================
+// 2. MATHEMATICAL & STATISTICAL PRIMITIVES
+// ============================================================================
+// Robust Median and MAD calculation over rolling lookback
+f_rolling_median_mad(src, len) =>
+    // Approximate rolling median via percentile_linear_interpolation
+    med = ta.percentile_linear_interpolation(src, len, 50)
+    dev = math.abs(src - med)
+    mad = ta.percentile_linear_interpolation(dev, len, 50)
+    [med, mad]
+
+volBaseline = ta.sma(volume, baselineLength)
+rvol = volBaseline > 0 ? volume / volBaseline : 1.0
+
+[rollingMedian, rollingMAD] = f_rolling_median_mad(volume, lookbackPeriod)
+robustZ = rollingMAD > 0.0001 ? (volume - rollingMedian) / (1.4826 * rollingMAD) : (volume > rollingMedian ? 1.0 : 0.0)
+
+// Volume Percentile (0 - 100)
+volRank = ta.percentrank(volume, lookbackPeriod)
+
+// ============================================================================
+// 3. CANDLE MICROSTRUCTURE & EFFORT VS RESULT
+// ============================================================================
+cRange = high - low
+cBody = math.abs(close - open)
+safeRange = math.max(cRange, syminfo.mintick)
+
+upperWick = high - math.max(open, close)
+lowerWick = math.min(open, close) - low
+upperWickRatio = upperWick / safeRange
+lowerWickRatio = lowerWick / safeRange
+closeLocation = (close - low) / safeRange
+
+atrVal = ta.atr(atrLength)
+rangeToATR = atrVal > 0 ? cRange / atrVal : 1.0
+dispToATR = atrVal > 0 ? cBody / atrVal : 1.0
+effortResultRatio = rvol / math.max(dispToATR, 0.05)
+
+// ============================================================================
+// 4. SMART ACTIVITY SCORE (0 - 100)
+// ============================================================================
+zComponent = math.min(50.0, math.max(0.0, (robustZ / 3.5) * 50.0))
+pctComponent = (volRank / 100.0) * 50.0
+volAnomalyScore = zComponent + pctComponent
+
+effortResultScore = effortResultRatio >= 1.5 ? math.min(100.0, 50.0 + rvol * 20.0) : 50.0
+rangeScore = math.min(100.0, rangeToATR * 33.3)
+rejectionScore = math.min(100.0, math.max(upperWickRatio, lowerWickRatio) * 120.0)
+
+smartActivityScore = math.min(100.0, math.max(0.0, 
+    volAnomalyScore * 0.35 + 
+    effortResultScore * 0.25 + 
+    rangeScore * 0.20 + 
+    rejectionScore * 0.20))
+
+// ============================================================================
+// 5. PATTERN DETECTION
+// ============================================================================
+isElevatedVol = rvol >= rvolAnomalyThresh or robustZ >= robustZThresh
+
+// 1. Absorption-like behavior: high volume, wide rejection wick, compressed displacement
+bullishAbsorption = isElevatedVol and lowerWickRatio >= 0.40 and closeLocation >= 0.45 and effortResultRatio >= 1.4
+bearishAbsorption = isElevatedVol and upperWickRatio >= 0.40 and closeLocation <= 0.55 and effortResultRatio >= 1.4
+
+// 2. Initiative activity: volume expansion, range expansion, strong body, close near extreme
+bullishInitiative = isElevatedVol and rangeToATR >= 1.25 and close > open and closeLocation >= 0.70
+bearishInitiative = isElevatedVol and rangeToATR >= 1.25 and close < open and closeLocation <= 0.30
+
+// 3. Exhaustion: extreme volume, wide range, rejection wick closing off extreme
+bullishExhaustion = isElevatedVol and rangeToATR >= 1.30 and upperWickRatio >= 0.40 and closeLocation <= 0.45
+bearishExhaustion = isElevatedVol and rangeToATR >= 1.30 and lowerWickRatio >= 0.40 and closeLocation >= 0.55
+
+// 4. Liquidity sweeps of previous pivots
+swingHigh = ta.pivothigh(high, 3, 3)
+swingLow  = ta.pivotlow(low, 3, 3)
+var float lastConfirmedHigh = na
+var float lastConfirmedLow  = na
+if not na(swingHigh)
+    lastConfirmedHigh := swingHigh
+if not na(swingLow)
+    lastConfirmedLow  := swingLow
+
+bullishSweep = isElevatedVol and not na(lastConfirmedLow) and low < lastConfirmedLow and close > lastConfirmedLow
+bearishSweep = isElevatedVol and not na(lastConfirmedHigh) and high > lastConfirmedHigh and close < lastConfirmedHigh
+
+// ============================================================================
+// 6. VISUAL RENDERING
+// ============================================================================
+// Histogram Color based on direction and intensity
+color histColor = color.gray
+if close > open
+    histColor := smartActivityScore >= 75 ? color.new(#00E676, 10) : (smartActivityScore >= 50 ? color.new(#00C853, 30) : color.new(#81C784, 50))
+else if close < open
+    histColor := smartActivityScore >= 75 ? color.new(#FF1744, 10) : (smartActivityScore >= 50 ? color.new(#D50000, 30) : color.new(#E57373, 50))
+else
+    histColor := color.new(#9E9E9E, 40)
+
+plot(smartActivityScore, 'Smart Activity Score', style=plot.style_columns, color=histColor)
+hline(80, 'Extreme Activity', color=color.new(#FF5252, 40), linestyle=hline.style_dashed)
+hline(50, 'Baseline Threshold', color=color.new(#78909C, 50), linestyle=hline.style_dotted)
+hline(20, 'Low Activity', color=color.new(#37474F, 60), linestyle=hline.style_solid)
+
+// Event markers
+plotshape(showMarkers and bullishAbsorption, 'Bullish Absorption', shape.circle, location.bottom, color.teal, size=size.tiny, text='ABS')
+plotshape(showMarkers and bearishAbsorption, 'Bearish Absorption', shape.circle, location.top, color.maroon, size=size.tiny, text='ABS')
+plotshape(showMarkers and bullishInitiative, 'Bullish Initiative', shape.triangleup, location.bottom, color.green, size=size.small, text='INI')
+plotshape(showMarkers and bearishInitiative, 'Bearish Initiative', shape.triangledown, location.top, color.red, size=size.small, text='INI')
+plotshape(showMarkers and (bullishExhaustion or bearishExhaustion), 'Exhaustion', shape.cross, location.top, color.orange, size=size.tiny, text='EXH')
+plotshape(showMarkers and bullishSweep, 'Bullish Sweep', shape.diamond, location.bottom, color.blue, size=size.small, text='SWP')
+plotshape(showMarkers and bearishSweep, 'Bearish Sweep', shape.diamond, location.top, color.purple, size=size.small, text='SWP')
+
+// Background highlights for extreme participation
+bgcolor(highlightBg and isElevatedVol ? (close > open ? color.new(#00E676, 92) : color.new(#FF1744, 92)) : na)
+
+// ============================================================================
+// 7. ALERTS (NON-PREDICTIVE BEHAVIORAL SIGNALS)
+// ============================================================================
+alertcondition(isElevatedVol, 'Volume Anomaly Detected', 'Abnormal relative volume participation detected on {{ticker}} at {{close}}')
+alertcondition(bullishAbsorption, 'Bullish Absorption-Like Event', 'Bullish absorption signature detected: high effort with lower wick rejection on {{ticker}}')
+alertcondition(bearishAbsorption, 'Bearish Absorption-Like Event', 'Bearish absorption signature detected: high effort with upper wick rejection on {{ticker}}')
+alertcondition(bullishInitiative, 'Bullish Initiative Activity', 'Bullish initiative displacement with volume and range expansion detected on {{ticker}}')
+alertcondition(bearishInitiative, 'Bearish Initiative Activity', 'Bearish initiative displacement with volume and range expansion detected on {{ticker}}')
+alertcondition(bullishSweep or bearishSweep, 'Liquidity Sweep Detected', 'Key swing level probed and recaptured on elevated volume on {{ticker}}')
+alertcondition(bullishExhaustion or bearishExhaustion, 'Exhaustion Activity', 'Exhaustion signature: extreme volume with rejection from directional extreme on {{ticker}}')

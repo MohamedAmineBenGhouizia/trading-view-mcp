@@ -117,4 +117,27 @@ export function registerAnalysisTools(server) {
       }
     }
   );
+
+  server.tool(
+    'market_get_smart_volume',
+    'Analyze institutional-style market activity proxy (RVOL, robust z-score, Wyckoffian effort vs result, absorption, initiative moves, exhaustion, sweeps, and accumulation/distribution). WHEN TO USE: Call when evaluating volume anomalies, liquidity sweeps, or market participation conviction. NO SIDE EFFECTS. LIMITATIONS: On CFD/Forex feeds (like OANDA:XAUUSD), volume reflects tick activity rather than centralized transaction contracts; activity is inferred/heuristic.',
+    {
+      lookback: z.coerce.number().optional().default(100).describe('Rolling lookback period for statistical volume profiling (default 100)'),
+      sensitivity: z.coerce.number().optional().default(1.0).describe('Detection sensitivity multiplier (default 1.0)'),
+      session: z.string().optional().default('AUTO').describe('Session window to evaluate (AUTO, ASIA, LONDON, NEW_YORK, LONDON_NY_OVERLAP)'),
+      includeMultiTimeframe: z.boolean().optional().default(false).describe('Whether to evaluate cross-timeframe smart volume alignment'),
+      expectedSymbol: z.string().optional().describe('Optional symbol to verify against chart state'),
+      expectedTf: z.string().optional().describe('Optional timeframe to verify against chart state'),
+    },
+    async (args) => {
+      const opContext = chartStateManager.createOperationContext('market_get_smart_volume');
+      try {
+        const result = await core.getSmartVolumeAnalysis(args);
+        return jsonResult(result);
+      } catch (err) {
+        return errorResult(err, opContext);
+      }
+    }
+  );
 }
+

@@ -18,12 +18,12 @@
     "build": "node scripts/build.js",
     "check:docs": "node scripts/check_docs.js",
     "generate:catalog": "node scripts/generate_catalog.js",
-    "test": "node --test tests/pine_analyze.test.js tests/cli.test.js tests/queue.test.js tests/state_manager.test.js tests/technical_indicators.test.js tests/market_structure.test.js tests/market_regime.test.js tests/zones_volume_divergences.test.js tests/multi_timeframe.test.js tests/security_serialization.test.js tests/error_contract.test.js tests/chaos_concurrency.test.js tests/stdio_safety.test.js tests/agent_workflows.test.js",
-    "test:unit": "node --test tests/pine_analyze.test.js tests/cli.test.js tests/queue.test.js tests/state_manager.test.js tests/technical_indicators.test.js tests/market_structure.test.js tests/market_regime.test.js tests/zones_volume_divergences.test.js tests/multi_timeframe.test.js tests/security_serialization.test.js tests/error_contract.test.js tests/chaos_concurrency.test.js tests/stdio_safety.test.js tests/agent_workflows.test.js",
+    "test": "node --test tests/pine_analyze.test.js tests/cli.test.js tests/queue.test.js tests/state_manager.test.js tests/technical_indicators.test.js tests/market_structure.test.js tests/market_regime.test.js tests/zones_volume_divergences.test.js tests/smart_volume.test.js tests/multi_timeframe.test.js tests/security_serialization.test.js tests/error_contract.test.js tests/chaos_concurrency.test.js tests/stdio_safety.test.js tests/agent_workflows.test.js",
+    "test:unit": "node --test tests/pine_analyze.test.js tests/cli.test.js tests/queue.test.js tests/state_manager.test.js tests/technical_indicators.test.js tests/market_structure.test.js tests/market_regime.test.js tests/zones_volume_divergences.test.js tests/smart_volume.test.js tests/multi_timeframe.test.js tests/security_serialization.test.js tests/error_contract.test.js tests/chaos_concurrency.test.js tests/stdio_safety.test.js tests/agent_workflows.test.js",
     "test:integration": "node --test tests/integration.test.js",
     "test:cli": "node --test tests/cli.test.js",
     "test:e2e": "node --test tests/e2e.test.js",
-    "test:all": "node --test tests/pine_analyze.test.js tests/cli.test.js tests/queue.test.js tests/state_manager.test.js tests/technical_indicators.test.js tests/market_structure.test.js tests/market_regime.test.js tests/zones_volume_divergences.test.js tests/multi_timeframe.test.js tests/security_serialization.test.js tests/error_contract.test.js tests/chaos_concurrency.test.js tests/stdio_safety.test.js tests/agent_workflows.test.js tests/integration.test.js",
+    "test:all": "node --test tests/pine_analyze.test.js tests/cli.test.js tests/queue.test.js tests/state_manager.test.js tests/technical_indicators.test.js tests/market_structure.test.js tests/market_regime.test.js tests/zones_volume_divergences.test.js tests/smart_volume.test.js tests/multi_timeframe.test.js tests/security_serialization.test.js tests/error_contract.test.js tests/chaos_concurrency.test.js tests/stdio_safety.test.js tests/agent_workflows.test.js tests/integration.test.js",
     "verify": "node scripts/verify.js"
   },
   "dependencies": {

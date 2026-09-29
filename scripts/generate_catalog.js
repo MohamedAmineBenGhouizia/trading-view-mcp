@@ -53,6 +53,7 @@ const toolCategories = {
   market_compare_timeframes: 'market_intelligence',
   market_get_recent_changes: 'market_intelligence',
   chart_get_state_diagnostics: 'market_intelligence',
+  market_get_smart_volume: 'market_intelligence',
 
   // Chart Navigation & Resolution (12)
   chart_get_state: 'chart_navigation',
@@ -201,6 +202,7 @@ const toolSideEffects = {
   market_detect_zones: 'READ',
   market_compare_timeframes: 'READ',
   market_get_recent_changes: 'READ',
+  market_get_smart_volume: 'READ',
 
   // EXTERNAL_SIDE_EFFECT
   tv_launch: 'EXTERNAL_SIDE_EFFECT',

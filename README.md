@@ -147,11 +147,31 @@ LLMs frequently hallucinate because live (unclosed) candles fluctuate after tool
 - **JS Injection Defense (CWE-94 / CWE-116)**: All user inputs (symbols, timeframes, script names, Pine code) are strictly serialized with `JSON.stringify()` before interpolation into CDP evaluate scripts.
 - **Stdout Protocol Purity**: In MCP, stdout is exclusively reserved for JSON-RPC framing. Any diagnostic message, warning, or debug log is routed strictly to `process.stderr`.
 
+### 7. Smart Institutional Activity Proxy Engine (Volume & Microstructure Analysis)
+The server integrates an advanced quantitative volume and market-microstructure engine (`src/analysis/smart-volume.js` and `market_get_smart_volume`):
+- **Robust Relative Volume (RVOL) & Median / MAD Anomaly Scoring**: Replaces naive SMA volume filters with rolling median and Median Absolute Deviation (MAD), computing finite robust z-scores:
+  $$\text{robustZ} = \frac{\text{Volume} - \text{Median}}{1.4826 \times \text{MAD}}$$
+  Gracefully handles zero MAD, flat consolidation, and outlier skew without NaN or Infinity drift.
+- **Volume Percentile Distribution**: Ranks activity across configurable lookbacks (`P50`, `P75`, `P90`, `P95`, `P99`) into normalized tiers (`NORMAL`, `ELEVATED`, `HIGH`, `EXTREME`).
+- **Candle Microstructure Geometry**: Computes True Range, Body Ratio, Upper/Lower Wick Ratios, and Close Location $(C - L) / (H - L)$ to measure directional conviction and rejection intensity.
+- **Wyckoffian Effort vs Result**: Models normalized relative volume (Effort) against ATR-normalized price displacement (Result) to detect `HIGH_EFFORT_LOW_RESULT` (potential absorption/exhaustion) vs `HIGH_EFFORT_HIGH_RESULT` (initiative moves) vs `LOW_EFFORT_HIGH_RESULT` (low-liquidity slippage).
+- **Behavioral Pattern Proxies**:
+  - `ABSORPTION_LIKE`: High effort volume with limited displacement, pronounced rejection wicks, and structural support/resistance boundary interaction.
+  - `INITIATIVE_BULLISH` / `INITIATIVE_BEARISH`: Significant volume anomaly with range expansion, strong directional body, and closes near bar extremes.
+  - `EXHAUSTION_BULLISH` / `EXHAUSTION_BEARISH`: Climax volume spikes with failure to accept outside range boundaries and rejection closes.
+  - `BULLISH_LIQUIDITY_SWEEP` / `BEARISH_LIQUIDITY_SWEEP`: Probing past confirmed swing highs/lows with instantaneous recapture and volume anomalies.
+  - `BREAKOUT_CONFIRMATION` vs `FAILED_BREAKOUT`: Multi-bar structural acceptance beyond key zones versus rejection traps.
+  - `ACCUMULATION_LIKE` / `DISTRIBUTION_LIKE`: Rolling multi-bar cluster heuristic tracking repeated absorption, close distribution bias, and boundary defense.
+- **Transparent Smart Activity Score (0-100)**: Never a black box; composite score exposes explicit component weights (`volumeAnomaly`, `effortResult`, `rangeExpansion`, `rejection`, `structureInteraction`, `pattern`).
+- **Session Awareness**: Automatically classifies Gold and FX liquidity regimes (`ASIA`, `LONDON`, `NEW_YORK`, `LONDON_NY_OVERLAP`).
+- **Feed Volume Type Transparency**: Explicitly tags CFD/Forex feeds (including `OANDA:XAUUSD`) as `TICK_VOLUME` (price update frequency) rather than centralized transaction volume, ensuring AI models never mischaracterize inferred behavior as literal institutional order-book data.
+- **Non-Repainting Guarantee**: All historical metrics and closed-bar events are mathematically immutable. Live forming bars are explicitly marked with `barClosed: false`.
+
 ---
 
 ## 🧰 Complete MCP Tool Catalog
 
-The server exposes 89 purpose-built MCP tools categorized across 10 functional domains.
+The server exposes 90 purpose-built MCP tools categorized across 10 functional domains.
 
 ### High-Level Market Intelligence Tools
 Designed specifically for AI agents to comprehend market structure and context in a single call.
@@ -159,11 +179,13 @@ Designed specifically for AI agents to comprehend market structure and context i
 | Tool Name | Key Parameters | Description |
 | :--- | :--- | :--- |
 | `market_get_context` | `candleCount`, `includeZones`, `includeIndicators`, `includeStructure`, `expectedSymbol`, `expectedTf` | **One-stop analytical call**: returns market trend, regime (TRENDING/RANGING/BREAKOUT), key indicators (RSI, MACD, BB, ATR, ADX, VWAP), volume anomalies, structure (swings, BOS, CHoCH), and support/resistance zones. |
+| `market_get_smart_volume` | `lookback`, `sensitivity`, `session`, `includeMultiTimeframe`, `expectedSymbol`, `expectedTf` | Analyzes institutional-style volume activity (RVOL, robust z-score, Wyckoff effort vs result, absorption, initiative moves, exhaustion, sweeps, accumulation/distribution). |
 | `market_detect_structure` | `candleCount` | Detects swing highs/lows, higher highs/lows (HH/HL/LH/LL), Break of Structure (BOS), Change of Character (CHoCH), and range equilibrium. |
 | `market_detect_zones` | `candleCount`, `touchThreshold` | Clusters price levels into horizontal support and resistance zones with touch counts, strength scores, and boundaries. |
 | `market_compare_timeframes` | `symbol`, `timeframes` | Evaluates multi-timeframe alignment across resolutions (e.g., 1D, 4H, 1H, 15m), scoring bullish/bearish consensus. |
 | `market_get_recent_changes` | `sinceTimestamp` | Low-token incremental delta polling: returns only new swings, structure breakouts, and volume anomalies since previous turn. |
 | `chart_get_state_diagnostics` | _none_ | Authoritative diagnostic snapshot of connection liveness, queue depth, active generation ID, and chart readiness. |
+
 
 ### Chart Control & Navigation Tools
 

@@ -23,12 +23,12 @@ export async function batchRun({ symbols, timeframes, action, delay_ms, ohlcv_co
     for (const tf of tfs) {
       const combo = { symbol, timeframe: tf };
       try {
-        if (colPath) await evaluate(`${colPath}.setSymbol('${symbol}')`);
-        else if (apiPath) await evaluate(`${apiPath}.setSymbol('${symbol}')`);
+        if (colPath) await evaluate(`${colPath}.setSymbol(${JSON.stringify(symbol)})`);
+        else if (apiPath) await evaluate(`${apiPath}.setSymbol(${JSON.stringify(symbol)})`);
 
         if (tf) {
-          if (colPath) await evaluate(`${colPath}.setResolution('${tf}')`);
-          else if (apiPath) await evaluate(`${apiPath}.setResolution('${tf}')`);
+          if (colPath) await evaluate(`${colPath}.setResolution(${JSON.stringify(tf)})`);
+          else if (apiPath) await evaluate(`${apiPath}.setResolution(${JSON.stringify(tf)})`);
         }
 
         await waitForChartReady(symbol);

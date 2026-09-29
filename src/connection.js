@@ -28,10 +28,64 @@ const KNOWN_PATHS = {
 
 export { KNOWN_PATHS };
 
-export async function getClient() {
+class AsyncQueue {
+  constructor() {
+    this._queue = Promise.resolve();
+  }
+
+  /**
+   * Enqueues a task and executes it in strict FIFO order.
+   * @template T
+   * @param {() => Promise<T>|T} task
+   * @returns {Promise<T>}
+   */
+  enqueue(task) {
+    return new Promise((resolve, reject) => {
+      this._queue = this._queue.then(async () => {
+        try {
+          resolve(await task());
+        } catch (err) {
+          reject(err);
+        }
+      });
+    });
+  }
+}
+
+export const cdpQueue = new AsyncQueue();
+
+export function withCDP(fn) {
+  return cdpQueue.enqueue(fn);
+}
+
+function wrapCDPClient(raw) {
+  if (!raw) return raw;
+  return new Proxy(raw, {
+    get(target, prop) {
+      const orig = target[prop];
+      if (typeof orig === 'function') {
+        return (...args) => cdpQueue.enqueue(() => orig.apply(target, args));
+      }
+      if (orig && typeof orig === 'object') {
+        return new Proxy(orig, {
+          get(domainTarget, domainProp) {
+            const domainMethod = domainTarget[domainProp];
+            if (typeof domainMethod === 'function') {
+              return (...args) => cdpQueue.enqueue(() => domainMethod.apply(domainTarget, args));
+            }
+            return domainMethod;
+          }
+        });
+      }
+      return orig;
+    }
+  });
+}
+
+async function getRawClient() {
   if (client) {
     try {
-      // Quick liveness check
+      // Quick liveness check on raw client (bypass queue to avoid deadlock)
       await client.Runtime.evaluate({ expression: '1', returnByValue: true });
       return client;
     } catch {
@@ -40,6 +94,11 @@ export async function getClient() {
     }
   }
   return connect();
+}
+
+export async function getClient() {
+  const raw = await getRawClient();
+  return wrapCDPClient(raw);
 }
 
 export async function connect() {
@@ -79,26 +138,28 @@ async function findChartTarget() {
 
 export async function getTargetInfo() {
   if (!targetInfo) {
-    await getClient();
+    await getRawClient();
   }
   return targetInfo;
 }
 
 export async function evaluate(expression, opts = {}) {
-  const c = await getClient();
-  const result = await c.Runtime.evaluate({
-    expression,
-    returnByValue: true,
-    awaitPromise: opts.awaitPromise ?? false,
-    ...opts,
+  return cdpQueue.enqueue(async () => {
+    const c = await getRawClient();
+    const result = await c.Runtime.evaluate({
+      expression,
+      returnByValue: true,
+      awaitPromise: opts.awaitPromise ?? false,
+      ...opts,
+    });
+    if (result.exceptionDetails) {
+      const msg = result.exceptionDetails.exception?.description
+        || result.exceptionDetails.text
+        || 'Unknown evaluation error';
+      throw new Error(`JS evaluation error: ${msg}`);
+    }
+    return result.result?.value;
   });
-  if (result.exceptionDetails) {
-    const msg = result.exceptionDetails.exception?.description
-      || result.exceptionDetails.text
-      || 'Unknown evaluation error';
-    throw new Error(`JS evaluation error: ${msg}`);
-  }
-  return result.result?.value;
 }
 
 export async function evaluateAsync(expression) {
@@ -106,11 +167,13 @@ export async function evaluateAsync(expression) {
 }
 
 export async function disconnect() {
-  if (client) {
-    try { await client.close(); } catch {}
-    client = null;
-    targetInfo = null;
-  }
+  return cdpQueue.enqueue(async () => {
+    if (client) {
+      try { await client.close(); } catch {}
+      client = null;
+      targetInfo = null;
+    }
+  });
 }
 
 // --- Direct API path helpers ---

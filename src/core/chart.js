@@ -1,8 +1,8 @@
 /**
  * Core chart control logic.
  */
-import { evaluate, evaluateAsync } from '../connection.js';
-import { waitForChartReady } from '../wait.js';
+import { evaluate } from '../connection.js';
+import { waitForChartReady, waitForCondition } from '../wait.js';
 
 const CHART_API = 'window.TradingViewApi._activeChartWidgetWV.value()';
 
@@ -29,13 +29,10 @@ export async function getState() {
 }
 
 export async function setSymbol({ symbol }) {
-  await evaluateAsync(`
+  await evaluate(`
     (function() {
       var chart = ${CHART_API};
-      return new Promise(function(resolve) {
-        chart.setSymbol('${symbol.replace(/'/g, "\\'")}', {});
-        setTimeout(resolve, 500);
-      });
+      chart.setSymbol(${JSON.stringify(symbol)}, {});
     })()
   `);
   const ready = await waitForChartReady(symbol);
@@ -46,7 +43,7 @@ export async function setTimeframe({ timeframe }) {
   await evaluate(`
     (function() {
       var chart = ${CHART_API};
-      chart.setResolution('${timeframe.replace(/'/g, "\\'")}', {});
+      chart.setResolution(${JSON.stringify(timeframe)}, {});
     })()
   `);
   const ready = await waitForChartReady(null, timeframe);
@@ -77,23 +74,27 @@ export async function manageIndicator({ action, indicator, entity_id, inputs: in
 
   if (action === 'add') {
     const inputArr = inputs ? Object.entries(inputs).map(([k, v]) => ({ id: k, value: v })) : [];
-    const before = await evaluate(`${CHART_API}.getAllStudies().map(function(s) { return s.id; })`);
+    const before = (await evaluate(`${CHART_API}.getAllStudies().map(function(s) { return s.id; })`)) || [];
     await evaluate(`
       (function() {
         var chart = ${CHART_API};
-        chart.createStudy('${indicator.replace(/'/g, "\\'")}', false, false, ${JSON.stringify(inputArr)});
+        chart.createStudy(${JSON.stringify(indicator)}, false, false, ${JSON.stringify(inputArr)});
       })()
     `);
-    await new Promise(r => setTimeout(r, 1500));
-    const after = await evaluate(`${CHART_API}.getAllStudies().map(function(s) { return s.id; })`);
-    const newIds = (after || []).filter(id => !(before || []).includes(id));
-    return { success: newIds.length > 0, action: 'add', indicator, entity_id: newIds[0] || null, new_study_count: newIds.length };
+    const newIds = await waitForCondition(async () => {
+      const after = await evaluate(`${CHART_API}.getAllStudies().map(function(s) { return s.id; })`);
+      const diff = (after || []).filter(id => !before.includes(id));
+      return diff.length > 0 ? diff : false;
+    }, { timeout: 3000, interval: 50 });
+
+    const studyIds = Array.isArray(newIds) ? newIds : [];
+    return { success: studyIds.length > 0, action: 'add', indicator, entity_id: studyIds[0] || null, new_study_count: studyIds.length };
   } else if (action === 'remove') {
     if (!entity_id) throw new Error('entity_id required for remove action. Use chart_get_state to find study IDs.');
     await evaluate(`
       (function() {
         var chart = ${CHART_API};
-        chart.removeEntity('${entity_id.replace(/'/g, "\\'")}');
+        chart.removeEntity(${JSON.stringify(entity_id)});
       })()
     `);
     return { success: true, action: 'remove', entity_id };
@@ -130,14 +131,16 @@ export async function setVisibleRange({ from, to }) {
       ts.zoomToBarsRange(fromIdx, toIdx);
     })()
   `);
-  await new Promise(r => setTimeout(r, 500));
-  const actual = await evaluate(`
-    (function() {
-      var chart = ${CHART_API};
-      try { var r = chart.getVisibleRange(); return { from: r.from || 0, to: r.to || 0 }; }
-      catch(e) { return { from: 0, to: 0, error: e.message }; }
-    })()
-  `);
+  const actual = await waitForCondition(async () => {
+    const r = await evaluate(`
+      (function() {
+        var chart = ${CHART_API};
+        try { var range = chart.getVisibleRange(); return { from: range.from || 0, to: range.to || 0 }; }
+        catch(e) { return null; }
+      })()
+    `);
+    return r && (r.from !== 0 || r.to !== 0) ? r : false;
+  }, { timeout: 1000, interval: 50 });
   return { success: true, requested: { from, to }, actual: actual || { from: 0, to: 0 } };
 }
 
@@ -176,7 +179,10 @@ export async function scrollToDate({ date }) {
       ts.zoomToBarsRange(fromIdx, toIdx);
     })()
   `);
-  await new Promise(r => setTimeout(r, 500));
+  await waitForCondition(async () => {
+    const r = await evaluate(`${CHART_API}.getVisibleRange()`);
+    return r != null ? r : false;
+  }, { timeout: 1000, interval: 50 });
   return { success: true, date, centered_on: timestamp, resolution, window: { from, to } };
 }
 

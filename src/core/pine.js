@@ -4,6 +4,7 @@
  * They throw on error (callers catch and format).
  */
 import { evaluate, evaluateAsync, getClient } from '../connection.js';
+import { waitForCondition } from '../wait.js';
 
 // ── Monaco finder (injected into TV page) ──
 const FIND_MONACO = `
@@ -65,12 +66,11 @@ export async function ensurePineEditorOpen() {
     })()
   `);
 
-  for (let i = 0; i < 50; i++) {
-    await new Promise(r => setTimeout(r, 200));
-    const ready = await evaluate(`(function() { return ${FIND_MONACO} !== null; })()`);
-    if (ready) return true;
-  }
-  return false;
+  const ready = await waitForCondition(async () => {
+    return evaluate(`(function() { return ${FIND_MONACO} !== null; })()`);
+  }, { timeout: 10000, interval: 50 });
+
+  return !!ready;
 }
 
 // ── Pure / offline functions ──
@@ -315,7 +315,20 @@ export async function compile() {
     await c.Input.dispatchKeyEvent({ type: 'keyUp', key: 'Enter', code: 'Enter' });
   }
 
-  await new Promise(r => setTimeout(r, 2000));
+  // Reactive wait for Monaco markers or chart reaction (poll every 50ms up to 2000ms)
+  await waitForCondition(async () => {
+    return evaluate(`
+      (function() {
+        var m = ${FIND_MONACO};
+        if (!m) return false;
+        var model = m.editor.getModel();
+        if (!model) return false;
+        var markers = m.env.editor.getModelMarkers({ resource: model.uri });
+        return markers && markers.length > 0;
+      })()
+    `);
+  }, { timeout: 2000, interval: 50 });
+
   return { success: true, button_clicked: clicked || 'keyboard_shortcut', source: 'dom_fallback' };
 }
 
@@ -351,27 +364,37 @@ export async function save() {
   const c = await getClient();
   await c.Input.dispatchKeyEvent({ type: 'keyDown', modifiers: 2, key: 's', code: 'KeyS', windowsVirtualKeyCode: 83 });
   await c.Input.dispatchKeyEvent({ type: 'keyUp', key: 's', code: 'KeyS' });
-  await new Promise(r => setTimeout(r, 800));
 
   // Handle "Save Script" name dialog that appears for new/unsaved scripts
-  const dialogHandled = await evaluate(`
-    (function() {
-      var saveBtn = null;
-      var btns = document.querySelectorAll('button');
-      for (var i = 0; i < btns.length; i++) {
-        var text = btns[i].textContent.trim();
-        if (text === 'Save' && btns[i].offsetParent !== null) {
-          // Check if it's in a dialog (not the Pine Editor save button)
-          var parent = btns[i].closest('[class*="dialog"], [class*="modal"], [class*="popup"], [role="dialog"]');
-          if (parent) { saveBtn = btns[i]; break; }
+  const dialogHandled = await waitForCondition(async () => {
+    return evaluate(`
+      (function() {
+        var saveBtn = null;
+        var btns = document.querySelectorAll('button');
+        for (var i = 0; i < btns.length; i++) {
+          var text = btns[i].textContent.trim();
+          if (text === 'Save' && btns[i].offsetParent !== null) {
+            // Check if it's in a dialog (not the Pine Editor save button)
+            var parent = btns[i].closest('[class*="dialog"], [class*="modal"], [class*="popup"], [role="dialog"]');
+            if (parent) { saveBtn = btns[i]; break; }
+          }
         }
-      }
-      if (saveBtn) { saveBtn.click(); return true; }
-      return false;
-    })()
-  `);
+        if (saveBtn) { saveBtn.click(); return true; }
+        return false;
+      })()
+    `);
+  }, { timeout: 800, interval: 50 });
 
-  if (dialogHandled) await new Promise(r => setTimeout(r, 500));
+  if (dialogHandled) {
+    await waitForCondition(async () => {
+      return evaluate(`
+        (function() {
+          var dialog = document.querySelector('[class*="dialog"], [class*="modal"], [class*="popup"], [role="dialog"]');
+          return !dialog || dialog.offsetParent === null;
+        })()
+      `);
+    }, { timeout: 500, interval: 50 });
+  }
 
   return { success: true, action: dialogHandled ? 'saved_with_dialog' : 'Ctrl+S_dispatched' };
 }
@@ -469,7 +492,27 @@ export async function smartCompile() {
     await c.Input.dispatchKeyEvent({ type: 'keyUp', key: 'Enter', code: 'Enter' });
   }
 
-  await new Promise(r => setTimeout(r, 2500));
+  // Reactive wait: poll every 50ms for compilation result (markers or new study)
+  await waitForCondition(async () => {
+    return evaluate(`
+      (function() {
+        var chart = window.TradingViewApi._activeChartWidgetWV.value();
+        var studyCount = (chart && typeof chart.getAllStudies === 'function') ? chart.getAllStudies().length : null;
+        var m = ${FIND_MONACO};
+        var markersCount = 0;
+        if (m) {
+          var model = m.editor.getModel();
+          if (model) {
+            var markers = m.env.editor.getModelMarkers({ resource: model.uri });
+            markersCount = markers ? markers.length : 0;
+          }
+        }
+        if (${studiesBefore} !== null && studyCount !== null && studyCount > ${studiesBefore}) return true;
+        if (markersCount > 0) return true;
+        return false;
+      })()
+    `);
+  }, { timeout: 2500, interval: 50 });
 
   const errors = await evaluate(`
     (function() {

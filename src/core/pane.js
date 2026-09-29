@@ -3,6 +3,7 @@
  * Controls multi-chart layouts (split panes) in TradingView.
  */
 import { evaluate, evaluateAsync, getClient } from '../connection.js';
+import { waitForCondition, waitForChartReady } from '../wait.js';
 
 const CWC = 'window.TradingViewApi._chartWidgetCollection';
 
@@ -96,8 +97,11 @@ export async function setLayout({ layout }) {
     throw new Error(`Unknown layout "${layout}". Available layouts:\n${available}`);
   }
 
-  await evaluateAsync(`${CWC}.setLayout('${resolved}')`);
-  await new Promise(r => setTimeout(r, 500));
+  await evaluateAsync(`${CWC}.setLayout(${JSON.stringify(resolved)})`);
+  await waitForCondition(async () => {
+    const s = await list();
+    return s && s.layout === resolved;
+  }, { timeout: 1000, interval: 50 });
 
   const state = await list();
   return {
@@ -136,22 +140,22 @@ export async function focus({ index }) {
  */
 export async function setSymbol({ index, symbol }) {
   const idx = Number(index);
-  const escaped = symbol.replace(/'/g, "\\'");
 
   // Focus the target pane first
   await focus({ index: idx });
-  await new Promise(r => setTimeout(r, 300));
+  await waitForCondition(async () => {
+    const s = await list();
+    return s && s.active_index === idx;
+  }, { timeout: 600, interval: 50 });
 
   // Now set symbol on the now-active chart
-  await evaluateAsync(`
+  await evaluate(`
     (function() {
       var chart = window.TradingViewApi._activeChartWidgetWV.value();
-      return new Promise(function(resolve) {
-        chart.setSymbol('${escaped}', {});
-        setTimeout(resolve, 500);
-      });
+      chart.setSymbol(${JSON.stringify(symbol)}, {});
     })()
   `);
+  await waitForChartReady(symbol);
 
   return { success: true, index: idx, symbol };
 }

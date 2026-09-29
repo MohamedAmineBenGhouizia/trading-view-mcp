@@ -28,7 +28,7 @@ export async function create({ condition, price, message }) {
         var label = inputs[i].closest('[class*="row"]')?.querySelector('[class*="label"]');
         if (label && /value|price/i.test(label.textContent)) {
           var nativeSet = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
-          nativeSet.call(inputs[i], '${price}');
+          nativeSet.call(inputs[i], ${JSON.stringify(String(price))});
           inputs[i].dispatchEvent(new Event('input', { bubbles: true }));
           inputs[i].dispatchEvent(new Event('change', { bubbles: true }));
           return true;
@@ -36,7 +36,7 @@ export async function create({ condition, price, message }) {
       }
       if (inputs.length > 0) {
         var nativeSet = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
-        nativeSet.call(inputs[0], '${price}');
+        nativeSet.call(inputs[0], ${JSON.stringify(String(price))});
         inputs[0].dispatchEvent(new Event('input', { bubbles: true }));
         return true;
       }

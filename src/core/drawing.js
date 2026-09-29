@@ -2,6 +2,7 @@
  * Core drawing logic.
  */
 import { evaluate, getChartApi } from '../connection.js';
+import { waitForCondition } from '../wait.js';
 
 export async function drawShape({ shape, point, point2, overrides: overridesRaw, text }) {
   const overrides = overridesRaw ? (typeof overridesRaw === 'string' ? JSON.parse(overridesRaw) : overridesRaw) : {};
@@ -9,28 +10,31 @@ export async function drawShape({ shape, point, point2, overrides: overridesRaw,
   const overridesStr = JSON.stringify(overrides || {});
   const textStr = text ? JSON.stringify(text) : '""';
 
-  const before = await evaluate(`${apiPath}.getAllShapes().map(function(s) { return s.id; })`);
+  const before = (await evaluate(`${apiPath}.getAllShapes().map(function(s) { return s.id; })`)) || [];
 
   if (point2) {
     await evaluate(`
       ${apiPath}.createMultipointShape(
         [{ time: ${point.time}, price: ${point.price} }, { time: ${point2.time}, price: ${point2.price} }],
-        { shape: '${shape}', overrides: ${overridesStr}, text: ${textStr} }
+        { shape: ${JSON.stringify(shape)}, overrides: ${overridesStr}, text: ${textStr} }
       )
     `);
   } else {
     await evaluate(`
       ${apiPath}.createShape(
         { time: ${point.time}, price: ${point.price} },
-        { shape: '${shape}', overrides: ${overridesStr}, text: ${textStr} }
+        { shape: ${JSON.stringify(shape)}, overrides: ${overridesStr}, text: ${textStr} }
       )
     `);
   }
 
-  await new Promise(r => setTimeout(r, 200));
-  const after = await evaluate(`${apiPath}.getAllShapes().map(function(s) { return s.id; })`);
-  const newId = (after || []).find(id => !(before || []).includes(id)) || null;
-  const result = { entity_id: newId };
+  const detectedId = await waitForCondition(async () => {
+    const after = await evaluate(`${apiPath}.getAllShapes().map(function(s) { return s.id; })`);
+    const found = (after || []).find(id => !before.includes(id));
+    return found || false;
+  }, { timeout: 1000, interval: 50 });
+
+  const result = { entity_id: detectedId || null };
   return { success: true, shape, entity_id: result?.entity_id };
 }
 
@@ -51,7 +55,7 @@ export async function getProperties({ entity_id }) {
   const result = await evaluate(`
     (function() {
       var api = ${apiPath};
-      var eid = '${entity_id}';
+      var eid = ${JSON.stringify(entity_id)};
       var props = { entity_id: eid };
       var shape = api.getShapeById(eid);
       if (!shape) return { error: 'Shape not found: ' + eid };
@@ -80,7 +84,7 @@ export async function removeOne({ entity_id }) {
   const result = await evaluate(`
     (function() {
       var api = ${apiPath};
-      var eid = '${entity_id}';
+      var eid = ${JSON.stringify(entity_id)};
       var before = api.getAllShapes();
       var found = false;
       for (var i = 0; i < before.length; i++) { if (before[i].id === eid) { found = true; break; } }

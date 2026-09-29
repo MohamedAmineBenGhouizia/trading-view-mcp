@@ -33,10 +33,10 @@ An enterprise-grade, concurrency-safe, observable Model Context Protocol (MCP) s
   - [Bar Replay & Simulation Engine](#bar-replay--simulation-engine-tools)
   - [Diagnostics, Health & Session Persistence](#diagnostics-health--session-persistence-tools)
 - [Installation & Quickstart](#-installation--quickstart)
+- [Antigravity Integration](#-antigravity-integration)
 - [MCP Client Configurations](#-mcp-client-configurations)
   - [Claude Desktop](#claude-desktop)
   - [Cursor IDE](#cursor-ide)
-  - [Antigravity / Gemini Code Assist](#antigravity--gemini-code-assist)
   - [VS Code / Cline / Roo Code](#vs-code--cline--roo-code)
 - [CLI Reference](#-cli-reference)
 - [Verification & Test Architecture](#-verification--test-architecture)
@@ -334,7 +334,77 @@ tradingview --remote-debugging-port=9222
 
 ---
 
+---
+
+## 🚀 Antigravity Integration
+
+TradingView MCP integrates seamlessly into Google Antigravity and Gemini Code Assist as a native Model Context Protocol provider.
+
+### 1. Configuration Path
+Antigravity discovers MCP servers from either the user global configuration or project workspace configuration:
+- **Global Config**: `~/.gemini/config/mcp_config.json` (or `%USERPROFILE%\.gemini\config\mcp_config.json` on Windows)
+- **Symbolic Link**: `~/.gemini/antigravity/mcp_config.json`
+- **IDE Config**: `~/.gemini/antigravity-ide/mcp_config.json`
+
+### 2. Canonical Server Definition
+Ensure your `mcp_config.json` registers `tradingview-mcp-jackson` pointing to the canonical `src/server.js` entrypoint:
+
+```json
+{
+  "mcpServers": {
+    "tradingview-mcp-jackson": {
+      "command": "node",
+      "args": [
+        "/absolute/path/to/trading-view-mcp/src/server.js"
+      ],
+      "env": {
+        "DEBUG_TV_MCP": "false"
+      }
+    }
+  }
+}
+```
+*(On Windows, use forward slashes or escaped backslashes, e.g. `C:/Users/<Username>/Downloads/development/tradingview-mcp-jackson/src/server.js`)*.
+
+### 3. Prerequisites & CDP Requirements
+- **Runtime**: Node.js `>= 18.0.0` available on system PATH.
+- **Port Exposure**: TradingView Desktop must be launched with `--remote-debugging-port=9222`.
+- **Chart Tab**: Ensure at least one chart tab is open on `tradingview.com/chart/` within the desktop app.
+
+### 4. How to Verify Connection in Antigravity
+When Antigravity starts or refreshes its tool environment:
+1. It reads `mcp_config.json` and starts `node src/server.js`.
+2. The server outputs its initial warning banners to `stderr`, keeping `stdout` completely clean for standard JSON-RPC 2.0 messages.
+3. Antigravity performs the protocol handshake and automatically lists and registers lazy tool schemas in `~/.gemini/antigravity/mcp/tradingview-mcp-jackson/*.json`.
+
+To smoke-test the live integration directly within Antigravity or a terminal:
+```bash
+node scripts/smoke_test.js
+```
+Expected output:
+```text
+✓ Initialize succeeded. Server: tradingview v2.1.0
+✓ tools/list succeeded. Discovered 89 registered MCP tools.
+✓ Verified presence of all mandatory tools in tool catalog.
+✓ pine_analyze executed cleanly: success=true, issues=0
+✓ SMOKE TEST COMPLETE: All MCP handshake, tool discovery, and tool call verifications passed.
+```
+
+### 5. Troubleshooting Antigravity Connections
+| Issue | Underlying Cause | Resolution |
+| :--- | :--- | :--- |
+| `Tool not found` in Antigravity | Tool schema missing in `~/.gemini/antigravity/mcp/tradingview-mcp-jackson` | Run `node scripts/sync_antigravity_schemas.js` to refresh all JSON schemas. |
+| `ECONNREFUSED 127.0.0.1:9222` | TradingView Desktop not started with remote debugging | Launch with `--remote-debugging-port=9222` or run `tv_launch` tool. |
+| `STALE_CHART_STATE` | Chart was navigating while an agent tool executed | Safe retryable condition; retry the tool call after 100ms. |
+| `Process exited with code 1` | Node.js syntax error or bad file path in config | Run `npm run verify` to validate syntax and verify path in `mcp_config.json`. |
+
+---
+
 ## 🔌 MCP Client Configurations
+
+### Canonical Runtime Entrypoint
+The canonical runtime entrypoint for all clients is **`src/server.js`**.  
+*(Note: `build/index.js` is also maintained as an executable forwarder for backwards compatibility).*
 
 ### Claude Desktop
 Add to your `claude_desktop_config.json`:
@@ -347,7 +417,7 @@ Add to your `claude_desktop_config.json`:
     "tradingview": {
       "command": "node",
       "args": [
-        "c:/Users/LENOVO/Downloads/development/tradingview-mcp-jackson/build/index.js"
+        "/path/to/trading-view-mcp/src/server.js"
       ]
     }
   }
@@ -355,28 +425,10 @@ Add to your `claude_desktop_config.json`:
 ```
 
 ### Cursor IDE
-Add to Cursor Settings -> Features -> MCP Servers -> Add New MCP Server:
+Add to Cursor Settings ➔ Features ➔ MCP Servers ➔ Add New MCP Server:
 - **Name**: `tradingview`
 - **Type**: `command`
-- **Command**: `node c:/Users/LENOVO/Downloads/development/tradingview-mcp-jackson/build/index.js`
-
-### Antigravity / Gemini Code Assist
-Add to your workspace or global `mcp_config.json`:
-```json
-{
-  "mcpServers": {
-    "tradingview-mcp-jackson": {
-      "command": "node",
-      "args": [
-        "c:/Users/LENOVO/Downloads/development/tradingview-mcp-jackson/build/index.js"
-      ],
-      "env": {
-        "DEBUG": "false"
-      }
-    }
-  }
-}
-```
+- **Command**: `node /path/to/trading-view-mcp/src/server.js`
 
 ### VS Code / Cline / Roo Code
 In `.vscode/cline_mcp_settings.json`:
@@ -385,7 +437,7 @@ In `.vscode/cline_mcp_settings.json`:
   "mcpServers": {
     "tradingview": {
       "command": "node",
-      "args": ["c:/Users/LENOVO/Downloads/development/tradingview-mcp-jackson/build/index.js"]
+      "args": ["/path/to/trading-view-mcp/src/server.js"]
     }
   }
 }

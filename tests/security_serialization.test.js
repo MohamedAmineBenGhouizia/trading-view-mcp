@@ -11,6 +11,10 @@ describe('Security & JS Serialization Defense (CWE-94 / CWE-116)', () => {
     `{"$where": "sleep(5000)"}`,
     `Robert'); DROP TABLE Students;--`,
     `\${global.process.mainModule.require('child_process').execSync('id')}`,
+    `' OR '1'='1`,
+    `\\'; alert(String.fromCharCode(88,83,83))//`,
+    `\${7*7}`,
+    `"}}; alert(1); var x = {a: {"`,
   ];
 
   it('safely serializes dangerous input into evaluate arguments using JSON.stringify', () => {
@@ -39,5 +43,24 @@ describe('Security & JS Serialization Defense (CWE-94 / CWE-116)', () => {
     const jsSnippet = `(function() { var overrides = ${serialized}; return overrides; })()`;
     const result = new Function(`return ${jsSnippet}`)();
     assert.deepEqual(result, complexInputs);
+  });
+
+  it('safely serializes domain-specific inputs: symbols, indicators, drawing text, alerts, Pine code, IDs, and labels', () => {
+    const domainFields = {
+      symbol: `BTC/USD' "BINANCE" \${evil} \`pwd\` \n\r \u00A9`,
+      indicatorName: `Relative Strength Index"); break; ("`,
+      drawingText: `Target Level: \$100,000 & \`alert(1)\` <svg onload=alert(1)>`,
+      alertMessage: `Crossing level '50000' \${process.exit()} "critical"`,
+      pineCode: `//@version=6\nindicator("Test\\"); malicious() //")\nplot(close)`,
+      entityId: `study_123'; drop_cache(); '`,
+      label: `Support: \${price} & \n\t "test"`,
+    };
+
+    for (const [field, rawVal] of Object.entries(domainFields)) {
+      const serialized = JSON.stringify(rawVal);
+      const jsSnippet = `(function() { var val = ${serialized}; return val; })()`;
+      const evaluated = new Function(`return ${jsSnippet}`)();
+      assert.strictEqual(evaluated, rawVal, `Domain field "${field}" failed safe serialization roundtrip`);
+    }
   });
 });

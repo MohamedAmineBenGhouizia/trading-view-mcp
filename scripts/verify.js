@@ -41,6 +41,7 @@ runStep('Unit Tests', process.execPath, [
   'tests/security_serialization.test.js',
   'tests/error_contract.test.js',
   'tests/chaos_concurrency.test.js',
+  'tests/stdio_safety.test.js',
 ]);
 
 // 4. Integration Tests

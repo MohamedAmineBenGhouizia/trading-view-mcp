@@ -129,4 +129,55 @@ describe('Chaos & Concurrency Safety', () => {
     assert.equal(studyLog[1].entityId, 'study_101');
     assert.notEqual(rsiRes.entityId, macdRes.entityId);
   });
+
+  it('mandated race-condition test: Request A (BTCUSDT/15m) starts, Request B (ETHUSDT/1H) changes state, preventing mixed context/data', async () => {
+    const manager = new ChartStateManager();
+    // Chart starts at BTCUSDT / 15m
+    manager.updateState({ symbol: 'BTCUSDT', timeframe: '15m' });
+
+    // Request A starts first: captures operation context
+    const opContextA = manager.createOperationContext('fetch_btcusdt_15m');
+    assert.equal(opContextA.symbol, 'BTCUSDT');
+    assert.equal(opContextA.timeframe, '15m');
+    const startGenA = opContextA.generation;
+
+    // Simulated async read of bars for Request A (takes 50ms)
+    const requestAPromise = (async () => {
+      await new Promise(r => setTimeout(r, 50));
+      // Prior to returning data, Request A asserts freshness
+      if (opContextA.isStale()) {
+        opContextA.assertNotStale();
+      }
+      return {
+        symbol: opContextA.symbol,
+        timeframe: opContextA.timeframe,
+        data: [{ close: 65000, time: 1000 }],
+        generation: opContextA.generation,
+      };
+    })();
+
+    // Request B starts 10ms later and changes chart state to ETHUSDT / 1H
+    const requestBPromise = (async () => {
+      await new Promise(r => setTimeout(r, 10));
+      return withChartTransaction('switch_to_eth_1h', async () => {
+        manager.bumpGeneration('user switched to ETH 1H', { symbol: 'ETHUSDT', timeframe: '1H', resolution: '1H' });
+        return { success: true, symbol: 'ETHUSDT', timeframe: '1H' };
+      });
+    })();
+
+    const [resultB, resultAError] = await Promise.allSettled([requestBPromise, requestAPromise]);
+
+    // Request B succeeded in setting new state
+    assert.equal(resultB.status, 'fulfilled');
+    assert.equal(manager.getSnapshot().symbol, 'ETHUSDT');
+    assert.equal(manager.getSnapshot().timeframe, '1H');
+
+    // Request A must NOT return ETH context with BTC data, or silently corrupt; it must throw STALE_CHART_STATE
+    assert.equal(resultAError.status, 'rejected');
+    assert.equal(resultAError.reason.code, 'STALE_CHART_STATE');
+    assert.equal(resultAError.reason.retryable, true);
+    assert.equal(resultAError.reason.context.operationSymbol, 'BTCUSDT');
+    assert.equal(resultAError.reason.context.startedGeneration, startGenA);
+  });
 });
+

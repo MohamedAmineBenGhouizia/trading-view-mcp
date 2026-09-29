@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, '..');
 
-const scanDirs = ['src', 'tests', 'scripts', 'build'];
+const scanDirs = ['src', 'tests', 'scripts', 'build', 'bin'];
 let checkedCount = 0;
 let errors = [];
 

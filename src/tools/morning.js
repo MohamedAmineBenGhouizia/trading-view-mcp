@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { jsonResult } from "./_format.js";
+import { jsonResult, errorResult } from "./_format.js";
 import * as core from "../core/morning.js";
 
 export function registerMorningTools(server) {
@@ -18,7 +18,7 @@ export function registerMorningTools(server) {
       try {
         return jsonResult(await core.runBrief({ rules_path }));
       } catch (err) {
-        return jsonResult({ success: false, error: err.message }, true);
+        return errorResult(err);
       }
     },
   );
@@ -41,7 +41,7 @@ export function registerMorningTools(server) {
       try {
         return jsonResult(core.saveSession({ brief, date }));
       } catch (err) {
-        return jsonResult({ success: false, error: err.message }, true);
+        return errorResult(err);
       }
     },
   );
@@ -59,7 +59,7 @@ export function registerMorningTools(server) {
       try {
         return jsonResult(core.getSession({ date }));
       } catch (err) {
-        return jsonResult({ success: false, error: err.message }, true);
+        return errorResult(err);
       }
     },
   );

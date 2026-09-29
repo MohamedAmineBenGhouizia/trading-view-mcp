@@ -103,4 +103,26 @@ describe('AsyncQueue — FIFO and Concurrency Safety', () => {
     assert.equal(r1, 'first');
     await assert.rejects(p2, /Task "abortable" was aborted/);
   });
+
+  it('rejects tasks with backpressure error when backlog exceeds maxDepth', async () => {
+    const queue = new AsyncQueue('BackpressureQueue', { maxDepth: 2 });
+
+    // p1 starts executing
+    const p1 = queue.enqueue(async () => {
+      await new Promise(r => setTimeout(r, 50));
+      return 'p1';
+    });
+
+    // p2 is enqueued (activeCount becomes 2)
+    const p2 = queue.enqueue(async () => 'p2');
+
+    // p3 exceeds maxDepth (activeCount >= 2) -> immediately rejected
+    const p3 = queue.enqueue(async () => 'p3', { label: 'overflowTask' });
+
+    await assert.rejects(p3, /\[BackpressureQueue_BACKPRESSURE\] Queue backlog exceeded maximum depth/);
+
+    const [r1, r2] = await Promise.all([p1, p2]);
+    assert.equal(r1, 'p1');
+    assert.equal(r2, 'p2');
+  });
 });

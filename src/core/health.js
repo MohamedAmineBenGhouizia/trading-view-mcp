@@ -173,6 +173,8 @@ export async function launch({ port, kill_existing } = {}) {
       `${process.env.LOCALAPPDATA}\\TradingView\\TradingView.exe`,
       `${process.env.PROGRAMFILES}\\TradingView\\TradingView.exe`,
       `${process.env['PROGRAMFILES(X86)']}\\TradingView\\TradingView.exe`,
+      `${process.env.USERPROFILE}\\Downloads\\TradingView\\TradingView.exe`,
+      `${process.env.USERPROFILE}\\Desktop\\TradingView\\TradingView.exe`,
     ],
     linux: [
       '/opt/TradingView/tradingview',
@@ -187,6 +189,14 @@ export async function launch({ port, kill_existing } = {}) {
   const candidates = pathMap[platform] || pathMap.linux;
   for (const p of candidates) {
     if (p && existsSync(p)) { tvPath = p; break; }
+  }
+
+  if (!tvPath && platform === 'win32') {
+    try {
+      const psCmd = 'powershell -NoProfile -Command "(Get-Process -Name TradingView -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty Path)"';
+      const runningPath = execSync(psCmd, { timeout: 4000 }).toString().trim();
+      if (runningPath && existsSync(runningPath)) tvPath = runningPath;
+    } catch { /* ignore */ }
   }
 
   if (!tvPath) {

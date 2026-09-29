@@ -78,8 +78,7 @@ export function calculateRSI(closes, length = 14) {
   avgGain /= length;
   avgLoss /= length;
 
-  let rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
-  result[length] = 100 - (100 / (1 + rs));
+  result[length] = avgLoss === 0 ? 100 : (avgGain === 0 ? 0 : 100 - (100 / (1 + (avgGain / avgLoss))));
 
   // Wilder's smoothing
   for (let i = length + 1; i < closes.length; i++) {
@@ -89,8 +88,7 @@ export function calculateRSI(closes, length = 14) {
     avgGain = (avgGain * (length - 1) + gain) / length;
     avgLoss = (avgLoss * (length - 1) + loss) / length;
 
-    rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
-    result[i] = 100 - (100 / (1 + rs));
+    result[i] = avgLoss === 0 ? 100 : (avgGain === 0 ? 0 : 100 - (100 / (1 + (avgGain / avgLoss))));
   }
 
   return result;

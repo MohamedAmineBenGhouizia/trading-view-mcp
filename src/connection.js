@@ -57,8 +57,9 @@ export { KNOWN_PATHS };
 
 // ── Async FIFO Queue with Timeout, Cancellation & Diagnostics ───────────────
 export class AsyncQueue {
-  constructor(name = 'Queue') {
+  constructor(name = 'Queue', { maxDepth = 1000 } = {}) {
     this.name = name;
+    this.maxDepth = maxDepth;
     this._queue = Promise.resolve();
     this._activeCount = 0;
     this._processedCount = 0;
@@ -78,6 +79,12 @@ export class AsyncQueue {
   enqueue(task, { label = 'anonymous', timeout = CDP_COMMAND_TIMEOUT_MS, signal = null } = {}) {
     if (signal?.aborted) {
       return Promise.reject(new Error(`[${this.name}_ABORTED] Task "${label}" was aborted before execution`));
+    }
+
+    if (this._activeCount >= this.maxDepth) {
+      return Promise.reject(
+        new Error(`[${this.name}_BACKPRESSURE] Queue backlog exceeded maximum depth (${this.maxDepth}). Task "${label}" rejected.`)
+      );
     }
 
     const enqueuedAt = Date.now();
@@ -142,15 +149,16 @@ export class AsyncQueue {
       active: this._activeCount,
       processed: this._processedCount,
       depth: Math.max(0, this._activeCount - 1),
+      maxDepth: this.maxDepth,
     };
   }
 }
 
 // Dedicated CDP command queue (serializes low-level CDP frames)
-export const cdpQueue = new AsyncQueue('CDP');
+export const cdpQueue = new AsyncQueue('CDP', { maxDepth: 1000 });
 
 // Dedicated Chart Transaction Queue (serializes multi-step high-level chart transactions)
-export const chartTxQueue = new AsyncQueue('CHART_TX');
+export const chartTxQueue = new AsyncQueue('CHART_TX', { maxDepth: 500 });
 
 /**
  * Execute a composite chart transaction with an exclusive lock on global chart state.

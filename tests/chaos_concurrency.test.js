@@ -77,4 +77,56 @@ describe('Chaos & Concurrency Safety', () => {
       assert.equal(results[i], i);
     }
   });
+
+  it('prevents cross-contamination between concurrent setTimeframe and getOHLCV', async () => {
+    const manager = new ChartStateManager();
+    manager.updateState({ symbol: 'BTCUSDT', timeframe: '15m' });
+
+    // Client 1 captures context for 15m read
+    const client1Context = manager.createOperationContext('read_15m_ohlcv');
+    assert.equal(client1Context.timeframe, '15m');
+    assert.equal(client1Context.generation, 2);
+
+    // Client 2 initiates setTimeframe('1H') transaction
+    await withChartTransaction('setTimeframe_1H', async () => {
+      manager.bumpGeneration('timeframe changed to 1H', { timeframe: '1H', resolution: '1H' });
+      await new Promise(r => setTimeout(r, 20));
+      return { success: true, timeframe: '1H' };
+    });
+
+    // Client 1 checks if its context is still valid before returning data
+    assert.equal(client1Context.isStale(), true);
+    assert.throws(
+      () => client1Context.assertNotStale(),
+      (err) => err.code === 'STALE_CHART_STATE' && err.retryable === true
+    );
+  });
+
+  it('serializes concurrent study operations without entity ID collision', async () => {
+    const studyLog = [];
+    let nextEntityId = 100;
+
+    const addRSI = withChartTransaction('add_RSI', async () => {
+      await new Promise(r => setTimeout(r, 25));
+      const entityId = `study_${nextEntityId++}`;
+      studyLog.push({ indicator: 'RSI', entityId });
+      return { success: true, entityId };
+    });
+
+    const addMACD = withChartTransaction('add_MACD', async () => {
+      await new Promise(r => setTimeout(r, 10));
+      const entityId = `study_${nextEntityId++}`;
+      studyLog.push({ indicator: 'MACD', entityId });
+      return { success: true, entityId };
+    });
+
+    const [rsiRes, macdRes] = await Promise.all([addRSI, addMACD]);
+
+    assert.equal(studyLog.length, 2);
+    assert.equal(studyLog[0].indicator, 'RSI');
+    assert.equal(studyLog[0].entityId, 'study_100');
+    assert.equal(studyLog[1].indicator, 'MACD');
+    assert.equal(studyLog[1].entityId, 'study_101');
+    assert.notEqual(rsiRes.entityId, macdRes.entityId);
+  });
 });

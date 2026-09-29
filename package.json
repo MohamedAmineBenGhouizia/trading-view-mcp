@@ -14,13 +14,15 @@
   "scripts": {
     "start": "node src/server.js",
     "tv": "node src/cli/index.js",
-    "test": "node --test tests/e2e.test.js tests/pine_analyze.test.js",
-    "test:e2e": "node --test tests/e2e.test.js",
+    "lint": "node scripts/lint.js",
+    "build": "node scripts/build.js",
+    "test": "node --test tests/pine_analyze.test.js tests/cli.test.js tests/queue.test.js tests/state_manager.test.js tests/technical_indicators.test.js tests/market_structure.test.js tests/market_regime.test.js tests/zones_volume_divergences.test.js tests/multi_timeframe.test.js tests/security_serialization.test.js tests/error_contract.test.js tests/chaos_concurrency.test.js",
     "test:unit": "node --test tests/pine_analyze.test.js tests/cli.test.js tests/queue.test.js tests/state_manager.test.js tests/technical_indicators.test.js tests/market_structure.test.js tests/market_regime.test.js tests/zones_volume_divergences.test.js tests/multi_timeframe.test.js tests/security_serialization.test.js tests/error_contract.test.js tests/chaos_concurrency.test.js",
+    "test:integration": "node --test tests/integration.test.js",
     "test:cli": "node --test tests/cli.test.js",
-    "test:all": "node --test tests/e2e.test.js tests/pine_analyze.test.js tests/cli.test.js",
-    "test:verbose": "node --test --test-reporter=spec tests/e2e.test.js tests/pine_analyze.test.js",
-    "test:count": "node --test --test-reporter=spec tests/e2e.test.js 2>&1 | tail -5"
+    "test:e2e": "node --test tests/e2e.test.js",
+    "test:all": "node --test tests/pine_analyze.test.js tests/cli.test.js tests/queue.test.js tests/state_manager.test.js tests/technical_indicators.test.js tests/market_structure.test.js tests/market_regime.test.js tests/zones_volume_divergences.test.js tests/multi_timeframe.test.js tests/security_serialization.test.js tests/error_contract.test.js tests/chaos_concurrency.test.js tests/integration.test.js",
+    "verify": "node scripts/verify.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",

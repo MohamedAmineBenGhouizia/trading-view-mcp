@@ -3,6 +3,7 @@
  * Uses TradingView's internal widget API with DOM fallback.
  */
 import { evaluate, evaluateAsync, getClient } from '../connection.js';
+import { waitForCondition } from '../wait.js';
 
 export async function get() {
   // Try internal API first — reads from the active watchlist widget
@@ -81,7 +82,11 @@ export async function add({ symbol }) {
   `);
 
   if (panelState?.error) throw new Error(panelState.error);
-  if (panelState?.opened) await new Promise(r => setTimeout(r, 500));
+  if (panelState?.opened) {
+    await waitForCondition(async () => {
+      return evaluate(`!!document.querySelector('[data-name="add-symbol-button"], [aria-label*="Add symbol"], button[class*="addSymbol"]')`);
+    }, { timeout: 2000, interval: 50, label: 'watchlist.panelOpened' });
+  }
 
   // Click the "Add symbol" button (various selectors)
   const addClicked = await evaluate(`
@@ -113,16 +118,23 @@ export async function add({ symbol }) {
   `);
 
   if (!addClicked?.found) throw new Error('Add symbol button not found in watchlist panel');
-  await new Promise(r => setTimeout(r, 300));
+
+  // Reactively wait for search dialog input to appear
+  await waitForCondition(async () => {
+    return evaluate(`!!document.querySelector('input[data-role="search"], [class*="search"] input, [data-name="symbol-search-items-dialog"] input')`);
+  }, { timeout: 2000, interval: 50, label: 'watchlist.searchDialogReady' });
 
   // Type the symbol into the search input
   await c.Input.insertText({ text: symbol });
-  await new Promise(r => setTimeout(r, 500));
+
+  // Reactively wait for search results list to populate
+  await waitForCondition(async () => {
+    return evaluate(`!!document.querySelector('[data-name="symbol-search-items-dialog"] [class*="item"], [class*="listContainer"] [class*="item"]')`);
+  }, { timeout: 2000, interval: 50, label: 'watchlist.searchResultsPopulated' });
 
   // Press Enter to select the first result
   await c.Input.dispatchKeyEvent({ type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 });
   await c.Input.dispatchKeyEvent({ type: 'keyUp', key: 'Enter', code: 'Enter' });
-  await new Promise(r => setTimeout(r, 300));
 
   // Press Escape to close search
   await c.Input.dispatchKeyEvent({ type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });

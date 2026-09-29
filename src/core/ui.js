@@ -2,6 +2,7 @@
  * Core UI automation logic.
  */
 import { evaluate, evaluateAsync, getClient } from '../connection.js';
+import { waitForCondition } from '../wait.js';
 
 export async function click({ by, value }) {
   const escaped = JSON.stringify(value);
@@ -140,23 +141,27 @@ export async function layoutSwitch({ name }) {
   `);
   if (!result?.success) throw new Error(result?.error || 'Unknown error switching layout');
 
-  // Handle "unsaved changes" confirmation dialog
-  await new Promise(r => setTimeout(r, 500));
-  const dismissed = await evaluate(`
-    (function() {
-      var btns = document.querySelectorAll('button');
-      for (var i = 0; i < btns.length; i++) {
-        var text = btns[i].textContent.trim();
-        if (/open anyway|don't save|discard/i.test(text)) {
-          btns[i].click();
-          return true;
-        }
-      }
-      return false;
-    })()
-  `);
+  // Reactively handle "unsaved changes" confirmation dialog if present
+  let dismissed = false;
+  try {
+    const dialogResult = await waitForCondition(async () => {
+      return evaluate(`
+        (function() {
+          var btns = document.querySelectorAll('button');
+          for (var i = 0; i < btns.length; i++) {
+            var text = btns[i].textContent.trim();
+            if (/open anyway|don't save|discard/i.test(text)) {
+              btns[i].click();
+              return true;
+            }
+          }
+          return false;
+        })()
+      `);
+    }, { timeout: 1500, interval: 50, label: 'layoutSwitch.unsavedDialog' });
+    dismissed = !!dialogResult;
+  } catch {}
 
-  if (dismissed) await new Promise(r => setTimeout(r, 1000));
   return { success: true, layout: result.name || name, layout_id: result.id, source: result.source, action: 'switched', unsaved_dialog_dismissed: dismissed };
 }
 
